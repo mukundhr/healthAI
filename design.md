@@ -159,7 +159,7 @@ sequenceDiagram
     User->>API: Upload Document
     API->>PIIProcessor: Extract Text + PII
     
-    rect rgb(255, 200, 200)
+    rect rgb(255, 255, 200)
     Note over PIIProcessor, LLM: PII Protection Zone
     PIIProcessor->>PIIProcessor: Detect PII (7 types)
     PIIProcessor->>PIIProcessor: Anonymize (replace with placeholders)
