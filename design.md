@@ -11,18 +11,13 @@ HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access 
 ### High-Level Architecture
 
 ```
-# HealthAccess AI - System Architecture
-
-```
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
-│                              USER INTERFACE LAYER                                        │
+│                         USER INTERFACE LAYER                                             │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                          │
-│             ┌──────────────────┐                  ┌──────────────────┐                  │
-│             │   Mobile Web     │                  │   SMS Fallback   │                  │
-│             │   Interface      │                  │                  │                  │
-│             └──────────────────┘                  └──────────────────┘                  │
-│                                                                                          │
+│   ┌──────────────────┐                          ┌──────────────────┐                    │
+│   │   Mobile Web      │                          │   SMS Fallback   │                    │
+│   │   Interface       │                          │                  │                    │
+│   └──────────────────┘                          └──────────────────┘                    │
 └────────────────────────────────────────┬─────────────────────────────────────────────────┘
                                          │
                                          ▼
@@ -119,18 +114,7 @@ HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access 
 │   │ Storage (S3) │         │   (Redis)    │         │    Logs      │                   │
 │   └──────────────┘         └──────────────┘         └──────────────┘                   │
 │                                                                                          │
-└──────────────────────────────────────────────────────────────────────────────────────────┘
-
-
-DATA FLOW:
-──────────
-1. User uploads medical report (Image/PDF) via mobile web interface
-2. API Gateway authenticates and routes request
-3. Document Processing Layer extracts text using OCR
-4. AI Processing Layer analyzes medical data and matches government schemes
-5. Output Generation Layer creates audio explanation in user's language
-6. Final delivery via SMS with action plan
-```
+└─────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Data Flow
