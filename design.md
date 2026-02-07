@@ -137,80 +137,56 @@ Translation → TTS → Compressed Audio → User
 ### HealthAccess AI - Dark Mode Architecture
 
 ```mermaid
-%%{
-  init: {
-    "theme": "dark",
-    "themeVariables": {
-      "darkMode": true,
-      "background": "#111111",
-      "primaryColor": "#2196F3",
-      "secondaryColor": "#FF9800",
-      "tertiaryColor": "#9C27B0",
-      "lineColor": "#FFFFFF",
-      "mainBkg": "#111111",
-      "nodeBkg": "#1a1a2e",
-      "clusterBkg": "#111111",
-      "clusterBorder": "#2196F3",
-      "rankSpacing": 200,
-      "nodeSpacing": 150,
-      "labelBoxWidth": 200,
-      "labelBoxHeight": 50
-    },
-    "flowchart": {
-      "curve": "basis",
-      "padding": 30,
-      "wrap": true
-    }
-  }
-}%%
-
-flowchart TB
-    %% Node Styling Definitions
-    classDef homeNode fill:#1a3a5c,stroke:#2196F3,stroke-width:3px,color:#ffffff,font-size:20px,rx:20,ry:20,min-width:300px,min-height:60px
-    classDef processNode fill:#3d2914,stroke:#FF9800,stroke-width:3px,color:#ffffff,font-size:20px,rx:20,ry:20,min-width:300px,min-height:60px
-    classDef resultNode fill:#1a2e3a,stroke:#9C27B0,stroke-width:3px,color:#ffffff,font-size:20px,rx:20,ry:20,min-width:300px,min-height:60px
+flowchart LR
+    %% Global Dark Theme Settings
+    set("theme", "dark")
+    
+    %% Styling Definitions
+    classDef screen1 fill:#1a3a5c,stroke:#2196F3,stroke-width:4px,color:#ffffff,font-size:16px,rx:15,ry:15
+    classDef screen2 fill:#3d2914,stroke:#FF9800,stroke-width:4px,color:#ffffff,font-size:16px,rx:15,ry:15
+    classDef screen3 fill:#1a2e3a,stroke:#9C27B0,stroke-width:4px,color:#ffffff,font-size:16px,rx:15,ry:15
     
     %% Screen 1: Home (Input Stage) - Dark Blue
-    subgraph HOME
-        style HOME fill:#111111,stroke:#2196F3,stroke-width:4px,color:#2196F3,font-size:28px,rx:25,ry:25
+    subgraph G1["📱 HOME\n─── Input Stage"]
+        style G1 fill:#111111,stroke:#2196F3,stroke-width:4px,color:#2196F3,font-size:20px,rx:20,ry:20
         direction TB
         
-        A1["📱 Smartphone / User"]:::homeNode
-        A2["User Selects Language (Telugu)"]:::homeNode
-        A3["🖱️ Clicks 'Scan Report' Button"]:::homeNode
+        A["📱\nSmartphone\nUser"]:::screen1
+        B["User Selects\nLanguage\n(Telugu)"]:::screen1
+        C["🖱️\nClicks\n'Scan Report'\nButton"]:::screen1
     end
     
     %% Screen 2: Processing (Analysis Stage) - Gold/Orange
-    subgraph PROCESS
-        style PROCESS fill:#111111,stroke:#FF9800,stroke-width:4px,color:#FF9800,font-size:28px,rx:25,ry:25
+    subgraph G2["⚙️ PROCESSING\n─── Analysis Stage"]
+        style G2 fill:#111111,stroke:#FF9800,stroke-width:4px,color:#FF9800,font-size:20px,rx:20,ry:20
         direction TB
         
-        B1["📄 Document Scanning"]:::processNode
-        B2["🔍 Analyzing Medical Text..."]:::processNode
-        B3["🏛️ Checking Govt Schemes..."]:::processNode
+        D["📄\nDocument\nScanning"]:::screen2
+        E["🔍\nAnalyzing\nMedical Text..."]:::screen2
+        F["🏛️\nChecking\nGovt Schemes..."]:::screen2
     end
     
     %% Screen 3: Result Dashboard (Output Stage) - Green/Purple
-    subgraph RESULT
-        style RESULT fill:#111111,stroke:#9C27B0,stroke-width:4px,color:#9C27B0,font-size:28px,rx:25,ry:25
+    subgraph G3["📊 RESULT DASHBOARD\n─── Output Stage"]
+        style G3 fill:#111111,stroke:#9C27B0,stroke-width:4px,color:#9C27B0,font-size:20px,rx:20,ry:20
         direction TB
         
-        C1["🔊 Play Audio Explanation"]:::resultNode
-        C2["📋 Health Summary (Hb Low)"]:::resultNode
-        C3["✉️ Scheme Matched: Ayushman Bharat"]:::resultNode
-        C4["📤 Send SMS Action Plan →"]:::resultNode
+        G["🔊\nPlay Audio\nExplanation"]:::screen3
+        H["📋\nHealth Summary\n(Hb Low)"]:::screen3
+        I["✉️\nScheme Matched\nAyushman Bharat"]:::screen3
+        J["📤\nSend SMS\nAction Plan →"]:::screen3
     end
     
     %% Flow Connections
-    A1 --> A2
-    A2 --> A3
-    A3 --"📤 Uploads Image"--> B1
-    B1 --> B2
-    B2 --> B3
-    B3 --"✅ Analysis Complete"--> C1
-    C1 --> C2
-    C2 --> C3
-    C3 --> C4
+    A --> B
+    B --> C
+    C --"📤\nUploads\nImage"--> D
+    D --> E
+    E --> F
+    F --"✅\nAnalysis\nComplete"--> G
+    G --> H
+    H --> I
+    I --> J
 ```
 
 ---
