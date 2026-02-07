@@ -137,11 +137,9 @@ Translation → TTS → Compressed Audio → User
 ### HealthAccess AI - Dark Mode Architecture
 
 ```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"darkMode": true, "background": "#111111", "primaryColor": "#2196F3", "secondaryColor": "#FF9800", "tertiaryColor": "#9C27B0", "lineColor": "#FFFFFF", "mainBkg": "#111111", "nodeBkg": "#1a1a2e", "clusterBkg": "#111111"}, "flowchart": {"curve": "basis", "padding": 20}, "graph": {"rankSpacing": 120, "nodeSpacing": 100}}}%%
+%%{init: {"theme": "dark", "themeVariables": {"darkMode": true, "background": "#111111", "primaryColor": "#2196F3", "secondaryColor": "#FF9800", "tertiaryColor": "#9C27B0", "lineColor": "#FFFFFF", "mainBkg": "#111111", "nodeBkg": "#1a1a2e", "clusterBkg": "#111111", "graph": {"rankSpacing": 120, "nodeSpacing": 100}}}}%%
 
 flowchart TB
-    %% Increase scale for larger diagram
-    scale = 1.5
     
     %% Node Styling Definitions
     classDef homeNode fill:#1a3a5c,stroke:#2196F3,stroke-width:3px,color:#ffffff,font-size:18px,rx:15,ry:15
