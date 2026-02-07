@@ -137,20 +137,23 @@ Translation → TTS → Compressed Audio → User
 ### HealthAccess AI - Dark Mode Architecture
 
 ```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"darkMode": true, "background": "#111111", "primaryColor": "#2196F3", "secondaryColor": "#FF9800", "tertiaryColor": "#9C27B0"}}}%%
+%%{init: {"theme": "dark", "themeVariables": {"darkMode": true, "background": "#111111", "primaryColor": "#2196F3", "secondaryColor": "#FF9800", "tertiaryColor": "#9C27B0", "lineColor": "#FFFFFF", "mainBkg": "#111111", "nodeBkg": "#1a1a2e", "clusterBkg": "#111111"}, "flowchart": {"curve": "basis", "padding": 20}, "graph": {"rankSpacing": 120, "nodeSpacing": 100}}}%%
 
-flowchart LR
+flowchart TB
+    %% Increase scale for larger diagram
+    scale = 1.5
+    
     %% Node Styling Definitions
-    classDef homeNode fill:#1a3a5c,stroke:#2196F3,stroke-width:2px,color:#ffffff,rx:10,ry:10
-    classDef processNode fill:#3d2914,stroke:#FF9800,stroke-width:2px,color:#ffffff,rx:10,ry:10
-    classDef resultNode fill:#1a2e3a,stroke:#9C27B0,stroke-width:2px,color:#ffffff,rx:10,ry:10
-    classDef subgraphHome fill:#111111,stroke:#2196F3,stroke-width:3px,rx:15,ry:15
-    classDef subgraphProcess fill:#111111,stroke:#FF9800,stroke-width:3px,rx:15,ry:15
-    classDef subgraphResult fill:#111111,stroke:#9C27B0,stroke-width:3px,rx:15,ry:15
+    classDef homeNode fill:#1a3a5c,stroke:#2196F3,stroke-width:3px,color:#ffffff,font-size:18px,rx:15,ry:15
+    classDef processNode fill:#3d2914,stroke:#FF9800,stroke-width:3px,color:#ffffff,font-size:18px,rx:15,ry:15
+    classDef resultNode fill:#1a2e3a,stroke:#9C27B0,stroke-width:3px,color:#ffffff,font-size:18px,rx:15,ry:15
+    classDef subgraphHome fill:#111111,stroke:#2196F3,stroke-width:4px,rx:20,ry:20
+    classDef subgraphProcess fill:#111111,stroke:#FF9800,stroke-width:4px,rx:20,ry:20
+    classDef subgraphResult fill:#111111,stroke:#9C27B0,stroke-width:4px,rx:20,ry:20
     
     %% Screen 1: Home (Input Stage) - Dark Blue
-    subgraph HOME[📱 HOME - Input Stage]
-        style HOME fill:#111111,stroke:#2196F3,stroke-width:3px,color:#2196F3
+    subgraph HOME[📱 **HOME - Input Stage**]
+        style HOME fill:#111111,stroke:#2196F3,stroke-width:4px,color:#2196F3,font-size:24px
         direction TB
         
         A1[("📱 Smartphone / User")]:::homeNode
@@ -159,8 +162,8 @@ flowchart LR
     end
     
     %% Screen 2: Processing (Analysis Stage) - Gold/Orange
-    subgraph PROCESS[⚙️ PROCESSING - Analysis Stage]
-        style PROCESS fill:#111111,stroke:#FF9800,stroke-width:3px,color:#FF9800
+    subgraph PROCESS[⚙️ **PROCESSING - Analysis Stage**]
+        style PROCESS fill:#111111,stroke:#FF9800,stroke-width:4px,color:#FF9800,font-size:24px
         direction TB
         
         B1["📄 Document Scanning"]:::processNode
@@ -169,8 +172,8 @@ flowchart LR
     end
     
     %% Screen 3: Result Dashboard (Output Stage) - Green/Purple
-    subgraph RESULT[📊 RESULT DASHBOARD - Output Stage]
-        style RESULT fill:#111111,stroke:#9C27B0,stroke-width:3px,color:#9C27B0
+    subgraph RESULT[📊 **RESULT DASHBOARD - Output Stage**]
+        style RESULT fill:#111111,stroke:#9C27B0,stroke-width:4px,color:#9C27B0,font-size:24px
         direction TB
         
         C1["🔊 Play Audio Explanation"]:::resultNode
@@ -182,10 +185,10 @@ flowchart LR
     %% Flow Connections
     A1 --> A2
     A2 --> A3
-    A3 --"📤 Uploads Image"--> B1
+    A3 --"📤 **Uploads Image**"--> B1
     B1 --> B2
     B2 --> B3
-    B3 --"✅ Analysis Complete"--> C1
+    B3 --"✅ **Analysis Complete**"--> C1
     C1 --> C2
     C2 --> C3
     C3 --> C4
