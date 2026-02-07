@@ -132,6 +132,67 @@ Translation → TTS → Compressed Audio → User
 
 ---
 
+## User Flow Diagram
+
+### HealthAccess AI - Dark Mode Architecture
+
+```mermaid
+%%{init: {"theme": "dark", "themeVariables": {"darkMode": true, "background": "#111111", "primaryColor": "#2196F3", "secondaryColor": "#FF9800", "tertiaryColor": "#9C27B0"}}}%%
+
+flowchart LR
+    %% Node Styling Definitions
+    classDef homeNode fill:#1a3a5c,stroke:#2196F3,stroke-width:2px,color:#ffffff,rx:10,ry:10
+    classDef processNode fill:#3d2914,stroke:#FF9800,stroke-width:2px,color:#ffffff,rx:10,ry:10
+    classDef resultNode fill:#1a2e3a,stroke:#9C27B0,stroke-width:2px,color:#ffffff,rx:10,ry:10
+    classDef subgraphHome fill:#111111,stroke:#2196F3,stroke-width:3px,rx:15,ry:15
+    classDef subgraphProcess fill:#111111,stroke:#FF9800,stroke-width:3px,rx:15,ry:15
+    classDef subgraphResult fill:#111111,stroke:#9C27B0,stroke-width:3px,rx:15,ry:15
+    
+    %% Screen 1: Home (Input Stage) - Dark Blue
+    subgraph HOME[📱 HOME - Input Stage]
+        style HOME fill:#111111,stroke:#2196F3,stroke-width:3px,color:#2196F3
+        direction TB
+        
+        A1[("📱 Smartphone / User")]:::homeNode
+        A2["User Selects Language (Telugu)"]:::homeNode
+        A3["🖱️ Clicks 'Scan Report' Button"]:::homeNode
+    end
+    
+    %% Screen 2: Processing (Analysis Stage) - Gold/Orange
+    subgraph PROCESS[⚙️ PROCESSING - Analysis Stage]
+        style PROCESS fill:#111111,stroke:#FF9800,stroke-width:3px,color:#FF9800
+        direction TB
+        
+        B1["📄 Document Scanning"]:::processNode
+        B2["🔍 Analyzing Medical Text..."]:::processNode
+        B3["🏛️ Checking Govt Schemes..."]:::processNode
+    end
+    
+    %% Screen 3: Result Dashboard (Output Stage) - Green/Purple
+    subgraph RESULT[📊 RESULT DASHBOARD - Output Stage]
+        style RESULT fill:#111111,stroke:#9C27B0,stroke-width:3px,color:#9C27B0
+        direction TB
+        
+        C1["🔊 Play Audio Explanation"]:::resultNode
+        C2["📋 Health Summary (Hb Low)"]:::resultNode
+        C3["✉️ Scheme Matched: Ayushman Bharat"]:::resultNode
+        C4["📤 Send SMS Action Plan →"]:::resultNode
+    end
+    
+    %% Flow Connections
+    A1 --> A2
+    A2 --> A3
+    A3 --"📤 Uploads Image"--> B1
+    B1 --> B2
+    B2 --> B3
+    B3 --"✅ Analysis Complete"--> C1
+    C1 --> C2
+    C2 --> C3
+    C3 --> C4
+```
+
+---
+
 ## Key Design Principles
 
 - **Voice-First**: Multilingual audio output for accessibility
