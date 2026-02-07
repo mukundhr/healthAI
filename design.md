@@ -137,56 +137,80 @@ Translation → TTS → Compressed Audio → User
 ### HealthAccess AI - Dark Mode Architecture
 
 ```mermaid
-flowchart LR
-    %% Global Dark Theme Settings
-    set("theme", "dark")
-    
-    %% Styling Definitions
-    classDef screen1 fill:#1a3a5c,stroke:#2196F3,stroke-width:4px,color:#ffffff,font-size:16px,rx:15,ry:15
-    classDef screen2 fill:#3d2914,stroke:#FF9800,stroke-width:4px,color:#ffffff,font-size:16px,rx:15,ry:15
-    classDef screen3 fill:#1a2e3a,stroke:#9C27B0,stroke-width:4px,color:#ffffff,font-size:16px,rx:15,ry:15
+%%{
+  init: {
+    "theme": "dark",
+    "themeVariables": {
+      "darkMode": true,
+      "background": "#111111",
+      "primaryColor": "#2196F3",
+      "secondaryColor": "#FF9800",
+      "tertiaryColor": "#9C27B0",
+      "lineColor": "#FFFFFF",
+      "mainBkg": "#1a1a2e",
+      "nodeBkg": "#1a1a2e",
+      "clusterBkg": "#0a0a0a",
+      "clusterBorder": "#2196F3"
+    },
+    "flowchart": {
+      "curve": "basis",
+      "padding": 50,
+      "nodeSpacing": 100,
+      "rankSpacing": 150,
+      "diagramPadding": 20
+    }
+  }
+}%%
+
+flowchart TD
+    %% Node Styling Definitions
+    classDef homeNode fill:#1a3a5c,stroke:#2196F3,stroke-width:3px,color:#ffffff,font-size:16px,padding:15px
+    classDef processNode fill:#3d2914,stroke:#FF9800,stroke-width:3px,color:#ffffff,font-size:16px,padding:15px
+    classDef resultNode fill:#1a2e3a,stroke:#9C27B0,stroke-width:3px,color:#ffffff,font-size:16px,padding:15px
     
     %% Screen 1: Home (Input Stage) - Dark Blue
-    subgraph G1["📱 HOME\n─── Input Stage"]
-        style G1 fill:#111111,stroke:#2196F3,stroke-width:4px,color:#2196F3,font-size:20px,rx:20,ry:20
+    subgraph HOME[" 🏠 HOME - INPUT STAGE "]
         direction TB
+        A1["📱 Smartphone / User"]:::homeNode
+        A2["User Selects Language<br/>(Telugu)"]:::homeNode
+        A3["🖱️ Clicks 'Scan Report' Button"]:::homeNode
         
-        A["📱\nSmartphone\nUser"]:::screen1
-        B["User Selects\nLanguage\n(Telugu)"]:::screen1
-        C["🖱️\nClicks\n'Scan Report'\nButton"]:::screen1
+        A1 --> A2
+        A2 --> A3
     end
     
     %% Screen 2: Processing (Analysis Stage) - Gold/Orange
-    subgraph G2["⚙️ PROCESSING\n─── Analysis Stage"]
-        style G2 fill:#111111,stroke:#FF9800,stroke-width:4px,color:#FF9800,font-size:20px,rx:20,ry:20
+    subgraph PROCESS[" ⚙️ PROCESSING - ANALYSIS STAGE "]
         direction TB
+        B1["📄 Document Scanning"]:::processNode
+        B2["🔍 Analyzing Medical Text..."]:::processNode
+        B3["🏛️ Checking Govt Schemes..."]:::processNode
         
-        D["📄\nDocument\nScanning"]:::screen2
-        E["🔍\nAnalyzing\nMedical Text..."]:::screen2
-        F["🏛️\nChecking\nGovt Schemes..."]:::screen2
+        B1 --> B2
+        B2 --> B3
     end
     
     %% Screen 3: Result Dashboard (Output Stage) - Green/Purple
-    subgraph G3["📊 RESULT DASHBOARD\n─── Output Stage"]
-        style G3 fill:#111111,stroke:#9C27B0,stroke-width:4px,color:#9C27B0,font-size:20px,rx:20,ry:20
+    subgraph RESULT[" 📊 RESULT - OUTPUT STAGE "]
         direction TB
+        C1["🔊 Play Audio Explanation"]:::resultNode
+        C2["📋 Health Summary<br/>(Hb Low)"]:::resultNode
+        C3["✉️ Scheme Matched:<br/>Ayushman Bharat"]:::resultNode
+        C4["📤 Send SMS Action Plan"]:::resultNode
         
-        G["🔊\nPlay Audio\nExplanation"]:::screen3
-        H["📋\nHealth Summary\n(Hb Low)"]:::screen3
-        I["✉️\nScheme Matched\nAyushman Bharat"]:::screen3
-        J["📤\nSend SMS\nAction Plan →"]:::screen3
+        C1 --> C2
+        C2 --> C3
+        C3 --> C4
     end
     
-    %% Flow Connections
-    A --> B
-    B --> C
-    C --"📤\nUploads\nImage"--> D
-    D --> E
-    E --> F
-    F --"✅\nAnalysis\nComplete"--> G
-    G --> H
-    H --> I
-    I --> J
+    %% Main Flow Connections
+    A3 -.->|"📤 Uploads Image"| B1
+    B3 -.->|"✅ Analysis Complete"| C1
+    
+    %% Styling for subgraphs
+    style HOME fill:#0d1b2a,stroke:#2196F3,stroke-width:3px,color:#2196F3
+    style PROCESS fill:#1a0f00,stroke:#FF9800,stroke-width:3px,color:#FF9800
+    style RESULT fill:#0f1a1a,stroke:#9C27B0,stroke-width:3px,color:#9C27B0
 ```
 
 ---
