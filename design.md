@@ -136,62 +136,76 @@ Translation → TTS → Compressed Audio → User
 
 ### HealthAccess AI - Dark Mode Architecture
 
-```mermaid
-%%{init: {"theme": "dark", "themeVariables": {"darkMode": true, "background": "#111111", "primaryColor": "#2196F3", "secondaryColor": "#FF9800", "tertiaryColor": "#9C27B0", "lineColor": "#FFFFFF", "mainBkg": "#111111", "nodeBkg": "#1a1a2e", "clusterBkg": "#111111", "graph": {"rankSpacing": 120, "nodeSpacing": 100}}}}%%
+```%%{init: {
+  "theme": "dark",
+  "themeVariables": {
+    "darkMode": true,
+    "background": "#111111",
+    "primaryColor": "#2196F3",
+    "secondaryColor": "#FF9800",
+    "tertiaryColor": "#9C27B0",
+    "lineColor": "#FFFFFF",
+    "mainBkg": "#111111",
+    "nodeBkg": "#1a1a2e",
+    "clusterBkg": "#111111",
+    "fontSize": "14px"
+  },
+  "flowchart": {
+    "rankSpacing": 160,
+    "nodeSpacing": 140,
+    "curve": "basis"
+  }
+}}%%
 
 flowchart TB
-    
-    %% Node Styling Definitions
-    classDef homeNode fill:#1a3a5c,stroke:#2196F3,stroke-width:3px,color:#ffffff,font-size:18px,rx:15,ry:15
-    classDef processNode fill:#3d2914,stroke:#FF9800,stroke-width:3px,color:#ffffff,font-size:18px,rx:15,ry:15
-    classDef resultNode fill:#1a2e3a,stroke:#9C27B0,stroke-width:3px,color:#ffffff,font-size:18px,rx:15,ry:15
-    classDef subgraphHome fill:#111111,stroke:#2196F3,stroke-width:4px,rx:20,ry:20
-    classDef subgraphProcess fill:#111111,stroke:#FF9800,stroke-width:4px,rx:20,ry:20
-    classDef subgraphResult fill:#111111,stroke:#9C27B0,stroke-width:4px,rx:20,ry:20
-    
-    %% Screen 1: Home (Input Stage) - Dark Blue
-    subgraph HOME[📱 **HOME - Input Stage**]
-        style HOME fill:#111111,stroke:#2196F3,stroke-width:4px,color:#2196F3,font-size:24px
-        direction TB
-        
-        A1[("📱 Smartphone / User")]:::homeNode
-        A2["User Selects Language (Telugu)"]:::homeNode
-        A3["🖱️ Clicks 'Scan Report' Button"]:::homeNode
-    end
-    
-    %% Screen 2: Processing (Analysis Stage) - Gold/Orange
-    subgraph PROCESS[⚙️ **PROCESSING - Analysis Stage**]
-        style PROCESS fill:#111111,stroke:#FF9800,stroke-width:4px,color:#FF9800,font-size:24px
-        direction TB
-        
-        B1["📄 Document Scanning"]:::processNode
-        B2["🔍 Analyzing Medical Text..."]:::processNode
-        B3["🏛️ Checking Govt Schemes..."]:::processNode
-    end
-    
-    %% Screen 3: Result Dashboard (Output Stage) - Green/Purple
-    subgraph RESULT[📊 **RESULT DASHBOARD - Output Stage**]
-        style RESULT fill:#111111,stroke:#9C27B0,stroke-width:4px,color:#9C27B0,font-size:24px
-        direction TB
-        
-        C1["🔊 Play Audio Explanation"]:::resultNode
-        C2["📋 Health Summary (Hb Low)"]:::resultNode
-        C3["✉️ Scheme Matched: Ayushman Bharat"]:::resultNode
-        C4["📤 Send SMS Action Plan →"]:::resultNode
-    end
-    
-    %% Flow Connections
-    A1 --> A2
-    A2 --> A3
-    A3 --"📤 **Uploads Image**"--> B1
-    B1 --> B2
-    B2 --> B3
-    B3 --"✅ **Analysis Complete**"--> C1
-    C1 --> C2
-    C2 --> C3
-    C3 --> C4
-```
 
+%% ---------- Node Styles ----------
+classDef homeNode fill:#1a3a5c,stroke:#2196F3,stroke-width:3px,color:#ffffff,rx:14,ry:14
+classDef processNode fill:#3d2914,stroke:#FF9800,stroke-width:3px,color:#ffffff,rx:14,ry:14
+classDef resultNode fill:#1a2e3a,stroke:#9C27B0,stroke-width:3px,color:#ffffff,rx:14,ry:14
+
+%% ---------- HOME ----------
+subgraph HOME["📱 HOME — Input Stage"]
+  direction TB
+  style HOME fill:#111111,stroke:#2196F3,stroke-width:4px,color:#2196F3
+
+  A1[📱 Smartphone / User]:::homeNode
+  A2["Selects Language<br/>(Telugu)"]:::homeNode
+  A3["Clicks<br/>Scan Report"]:::homeNode
+end
+
+%% ---------- PROCESSING ----------
+subgraph PROCESS["⚙️ PROCESSING — Analysis Stage"]
+  direction TB
+  style PROCESS fill:#111111,stroke:#FF9800,stroke-width:4px,color:#FF9800
+
+  B1["Document<br/>Scanning"]:::processNode
+  B2["Analyzing<br/>Medical Text"]:::processNode
+  B3["Checking Govt<br/>Schemes"]:::processNode
+end
+
+%% ---------- RESULT ----------
+subgraph RESULT["📊 RESULT DASHBOARD — Output Stage"]
+  direction TB
+  style RESULT fill:#111111,stroke:#9C27B0,stroke-width:4px,color:#9C27B0
+
+  C1["Play Audio<br/>Explanation"]:::resultNode
+  C2["Health Summary<br/>(Hb Low)"]:::resultNode
+  C3["Scheme Matched<br/>Ayushman Bharat"]:::resultNode
+  C4["Send SMS<br/>Action Plan"]:::resultNode
+end
+
+%% ---------- FLOWS ----------
+A1 --> A2
+A2 --> A3
+A3 -- Uploads Image --> B1
+B1 --> B2
+B2 --> B3
+B3 -- Analysis Complete --> C1
+C1 --> C2
+C2 --> C3
+C3 --> C4
+```
 ---
 
 ## Key Design Principles
