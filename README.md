@@ -107,10 +107,7 @@ Translation → TTS → Compressed Audio → User
 
 - AWS for cloud services (Textract, Polly, Bedrock, S3)
 - Google Cloud for Vision API and Text-to-Speech
-- Meta for Llama 3 language model
 - Anthropic for Claude
-- OpenAI for GPT-4
-
 ---
 
 **Built with for making healthcare accessible to everyone**
