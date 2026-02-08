@@ -19,8 +19,8 @@ HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access 
 │   │                    Mobile/Web Experience                         │                    │
 │   └─────────────────────────────────────────────────────────────────┘                    │
 └────────────────────────────────────────┬─────────────────────────────────────────────────┘
-                                         │
-                                         ▼
+                                          │
+                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                              API GATEWAY LAYER                                           │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
@@ -29,8 +29,8 @@ HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access 
 │     • Compression       • Caching          • Load Balancing                             │
 │                                                                                          │
 └────────────────────────────────────────┬─────────────────────────────────────────────────┘
-                                         │
-                                         ▼
+                                          │
+                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                         DOCUMENT PROCESSING LAYER                                        │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
@@ -41,12 +41,9 @@ HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access 
 │   │   Handler    │         │ / Tesseract  │         │              │                   │
 │   └──────────────┘         └──────────────┘         └──────────────┘                   │
 │                                                                                          │
-│                                                                                          │
-│   ┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-│                                                                                          │
 └────────────────────────────────────────┬─────────────────────────────────────────────────┘
-                                         │
-                                         ▼
+                                          │
+                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                              AI PROCESSING LAYER                                         │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
@@ -77,8 +74,8 @@ HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access 
 │   └───────────────────────────────────────────────────────────────────────┘            │
 │                                                                                          │
 └────────────────────────────────────────┬─────────────────────────────────────────────────┘
-                                         │
-                                         ▼
+                                          │
+                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                         OUTPUT GENERATION LAYER                                          │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
@@ -95,8 +92,8 @@ HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access 
 │   └───────────────────────────────────────────────────────────────────────┘            │
 │                                                                                          │
 └────────────────────────────────────────┬─────────────────────────────────────────────────┘
-                                         │
-                                         ▼
+                                          │
+                                          ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────────┐
 │                           DATA & STORAGE LAYER                                           │
 ├─────────────────────────────────────────────────────────────────────────────────────────┤
@@ -118,7 +115,7 @@ HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access 
 ### Data Flow
 
 ```
-User Upload → OCR/STT → Document Classification → 
+User Upload → OCR → Document Classification → 
 Knowledge Retrieval → LLM Reasoning → Simplification → 
 Translation → TTS → Compressed Audio → User
 ```
@@ -130,10 +127,9 @@ Translation → TTS → Compressed Audio → User
 | **OCR** | AWS Textract / Google Cloud Vision / Tesseract |
 | **LLM** | AWS Bedrock (Claude) / Llama 3 / GPT-4 |
 | **TTS** | AWS Polly / Google Cloud TTS |
-| **STT** | AWS Transcribe / Whisper |
 | **Backend** | FastAPI / Flask (Python), AWS Lambda |
 | **Storage** | AWS S3, PostgreSQL, FAISS / Pinecone |
-| **Frontend** | React / Next.js (PWA), Twilio |
+| **Frontend** | React / Next.js (PWA) |
 | **Infrastructure** | AWS / Google Cloud, CloudFront |
 
 ---
