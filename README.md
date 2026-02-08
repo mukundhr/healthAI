@@ -3,14 +3,6 @@
 HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access assistant designed to bridge the gap between complex medical information and underserved communities. The system simplifies medical reports, matches users with government healthcare schemes, and provides audio-based guidance for low-literacy users in rural and semi-urban areas.
 
 ---
-### Data Flow
-
-```
-User Upload → OCR/STT → Document Classification → 
-Knowledge Retrieval → LLM Reasoning → Simplification → 
-Translation → TTS → Compressed Audio → User
-```
----
 
 ## User Flow
 
