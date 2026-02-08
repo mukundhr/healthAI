@@ -102,12 +102,3 @@ Translation → TTS → Compressed Audio → User
 - API keys for LLM services (Claude, Llama, or GPT-4)
 
 ---
-
-## Acknowledgments
-
-- AWS for cloud services (Textract, Polly, Bedrock, S3)
-- Google Cloud for Vision API and Text-to-Speech
-- Anthropic for Claude
----
-
-**Built with for making healthcare accessible to everyone**
