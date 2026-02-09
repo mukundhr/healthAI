@@ -1,96 +1,192 @@
-# HealthAccess AI
+# AccessAI
 
-HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access assistant designed to bridge the gap between complex medical information and underserved communities. The system simplifies medical reports, matches users with government healthcare schemes, and provides audio-based guidance for low-literacy users in rural and semi-urban areas.
+**AccessAI** is a low-bandwidth, multilingual, voice-first healthcare access system designed to help underserved communities understand medical information and navigate public healthcare schemes.
 
----
+It converts complex medical reports and policy documents into simple, localized, audio-based guidance, reducing delays caused by confusion, literacy barriers, and fragmented information.
 
-## User Flow
-
-### 1. Home - Input Stage
-- **Smartphone / User**
-- User Selects Language (Telugu, Hindi, Tamil, Kannada, Bengali, etc.)
-- Clicks 'Scan Report' Button
-
-### 2. Processing - Analysis Stage
-- **Document Scanning**
-- Analyzing Medical Text...
-- Checking Govt Schemes...
-
-### 3. Result - Output Stage
-- Play Audio Explanation
-- Health Summary (e.g., Hb Low)
-- Scheme Matched: Ayushman Bharat
-- Send SMS Action Plan
+AccessAI is **not a diagnostic system**. It is an information and navigation layer.
 
 ---
 
-## Key Design Principles
+## Problem
 
-- **Voice-First**: Multilingual audio output for accessibility
-- **Low-Bandwidth**: Optimized for poor connectivity areas
-- **Privacy-First**: No persistent storage of sensitive medical data
-- **Non-Diagnostic**: Provides information, not medical advice
+In rural and semi-urban settings:
+
+- Medical reports contain unexplained clinical terms (e.g., Hb 8.2, MCV low)
+- Translation tools convert text but not meaning
+- Doctor consultations involve long wait times and costs
+- Government healthcare information exists across large, hard-to-navigate PDF portals
+
+As a result, patients delay treatment due to lack of clarity and guidance.
+
+---
+
+## Solution Overview
+
+AccessAI provides instant, voice-based explanations of medical reports and connects users to relevant government healthcare schemes.
+
+The system focuses on:
+- Understanding medical content
+- Simplifying it into actionable language
+- Delivering guidance through regional-language audio
+- Reducing dependency on intermediaries
+
+---
+
+## User Journey
+
+### 1. Input
+- User selects preferred language
+- Uploads a medical report or asks a question (text or voice)
+
+### 2. Processing
+- Medical text is extracted from documents
+- AI interprets medical and policy context
+- Verified medical and government data is retrieved
+- Scheme eligibility is evaluated
+
+### 3. Output
+- Regional-language audio explanation
+- Simplified health summary
+- Matched government healthcare scheme
+- Actionable next steps (where to go, when, and why)
+
+---
+
+## System Design Principles
+
+- **Voice-First**  
+  Designed for low-literacy and accessibility-constrained users
+
+- **Low-Bandwidth**  
+  Optimized for unstable or limited connectivity environments
+
+- **Privacy-Aware**  
+  Minimal retention of sensitive medical data
+
+- **Non-Diagnostic**  
+  Provides information and guidance, not medical advice
+
+- **India-Contextual**  
+  Supports regional languages and government healthcare programs
+
+---
+
+## Architecture Overview
+
+**Input Layer**
+- Medical reports (image / PDF)
+- Text queries
+- Voice queries
+
+**Processing Layer**
+- OCR for medical document extraction
+- Speech-to-text for voice input
+- AI reasoning for medical and policy interpretation
+
+**Knowledge Layer**
+- Retrieval-augmented generation (RAG)
+- Verified medical references
+- Government healthcare scheme database
+
+**Output Layer**
+- Regional-language text summaries
+- Voice explanations
+- SMS-based action plans
 
 ---
 
 ## Technology Stack
 
-| Layer | Technologies |
-|-------|-------------|
-| **OCR** | AWS Textract / Google Cloud Vision / Tesseract |
-| **LLM** | AWS Bedrock (Claude) / Llama 3 / GPT-4 |
-| **TTS** | AWS Polly / Google Cloud TTS |
-| **STT** | AWS Transcribe / Whisper |
-| **Backend** | FastAPI / Flask (Python), AWS Lambda |
-| **Storage** | AWS S3, PostgreSQL, FAISS / Pinecone |
-| **Frontend** | React / Next.js (PWA), Twilio |
-| **Infrastructure** | AWS / Google Cloud, CloudFront |
+### Input & Ingestion
+- OCR: Amazon Textract  
+- Speech-to-Text: Amazon Transcribe  
+- Frontend: React / Next.js (Progressive Web App)
+
+### AI & Reasoning
+- LLM: Amazon Bedrock (Claude)  
+- Prompted for medical simplification and risk-aware summaries
+
+### Knowledge Retrieval
+- Vector Search: FAISS / OpenSearch  
+- Data Sources: Curated medical references and government policy data
+
+### Output
+- Text-to-Speech: Amazon Polly  
+- Channels: Web audio, SMS fallback
+
+### Backend & Infrastructure
+- API Layer: FastAPI / AWS Lambda  
+- Storage: Amazon S3 (temporary, session-based)  
+- Security: AWS IAM, encrypted APIs
 
 ---
 
-## Features
+## Core Features
 
-### Document Upload
-- **Multiple Format Support**: PDF, Image documents
-- **Mobile Web Interface**: Accessible via smartphones
-- **SMS Fallback**: Alternative access method
+### Medical Document Understanding
+- Supports scanned images and PDFs
+- Extracts key health parameters
+- Handles noisy and low-quality reports
 
-### Voice-First Experience
-- **Multilingual Support**: Telugu, Hindi, Tamil, Kannada, Bengali, and more
-- **Text-to-Speech**: Audio explanations for low-literacy users
-- **Speech-to-Text**: Voice input for hands-free interaction
+### Voice-First Interaction
+- Regional-language audio output
+- Hands-free voice input
+- Designed for low-literacy users
 
-### AI-Powered Analysis
-- **Document Classification**: Identifies medical report types
-- **Medical Entity Extraction**: Key health metrics and parameters
-- **LLM Reasoning**: Context-aware medical jargon simplification
-- **RAG-Based Retrieval**: Medical knowledge base and scheme matching
+### AI-Driven Simplification
+- Converts medical jargon into plain language
+- Context-aware summaries
+- Confidence-aware responses to reduce misinformation risk
 
 ### Government Scheme Matching
-- **Automatic Eligibility Check**: Matches users with relevant schemes
-- **Scheme Database**: Ayushman Bharat and other government programs
-- **Action Plan SMS**: Sends personalized recommendations
+- Identifies relevant healthcare schemes
+- Provides eligibility hints
+- Delivers next-step guidance via audio and SMS
 
 ### Low-Bandwidth Optimization
-- **Compressed Audio**: Efficient delivery in poor connectivity
-- **Mobile Web PWA**: Progressive Web App for offline capabilities
-- **Smart Caching**: Redis-based audio cache for faster delivery
+- Compressed audio delivery
+- PWA support for intermittent connectivity
+- Lightweight UI for low-end devices
 
 ---
 
 ## Security & Privacy
 
-- **No Persistent Storage**: Sensitive medical data is not stored permanently
-- **Privacy-First Architecture**: Designed for healthcare data protection
-- **Secure API Communications**: All API communications are encrypted
+AccessAI is designed to minimize exposure of sensitive medical and personal data at every stage of processing.
 
+- **PII Anonymization Before AI Processing**  
+  Personally identifiable information (name, age, phone number, address, hospital ID, etc.) is detected and redacted or tokenized before any data is sent to the LLM.  
+  The language model never receives raw user-identifying information.
+
+- **Ephemeral, Session-Based Data Handling**  
+  Medical documents and extracted text are processed in-memory or within short-lived sessions and are not stored persistently.
+
+- **Separated Processing Boundaries**  
+  PII handling, medical interpretation, and response generation are isolated into separate stages to prevent unintended data leakage.
+
+- **Encrypted Communication**  
+  All data in transit between services is encrypted using secure transport protocols.
+
+- **Healthcare-Aware Design**  
+  The system is designed with medical data sensitivity in mind and avoids unnecessary data retention or reuse.
+
+- **Non-Diagnostic Safeguards**  
+  Outputs are framed as informational guidance, reducing the risk of harm from misinterpretation.
 ---
 
-## Getting Started
+## Scope & Limitations
 
-### Prerequisites
-- Python 3.8+
-- AWS Cloud account (for Textract, Polly, S3) or Google Cloud account
-- API keys for LLM services (Claude, Llama, or GPT-4)
+- AccessAI does not diagnose conditions or prescribe treatment
+- Outputs are informational and supportive in nature
+- OCR and speech recognition errors are possible; guidance includes cautionary framing
+- Designed to complement healthcare systems, not replace them
+---
+
+## Why AccessAI
+
+AccessAI addresses the first barrier to healthcare access: understanding.
+
+By transforming medical and policy information into clear, localized, voice-based guidance, it enables faster and more informed decisions for communities that are often excluded from digital healthcare tools.
 
 ---
