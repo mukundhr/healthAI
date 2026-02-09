@@ -219,9 +219,8 @@ flowchart TD
         C1["Audio Explanation<br/>Amazon Polly TTS"]:::outputStyle
         C2["Text Summary<br/>Health Status & Findings"]:::outputStyle
         C3["Government Scheme Match<br/>Ayushman Bharat | State Programs"]:::outputStyle
-        C4["Action Plan<br/>Next Steps & Location"]:::outputStyle
         
-        C1 --> C2 --> C3 --> C4
+        C1 --> C2 --> C3
     end
     
     %% Flow Connections
