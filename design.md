@@ -1,8 +1,19 @@
-# HealthAccess AI - System Design Document
+# AccessAI - System Design Document
 
 ## Executive Summary
 
-HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access assistant designed to bridge the gap between complex medical information and underserved communities. The system simplifies medical reports, matches users with government healthcare schemes, and provides audio-based guidance for low-literacy users in rural and semi-urban areas.
+AccessAI is a voice-first, multilingual healthcare access platform that converts complex medical reports into simple, regional-language audio guidance and connects users with government healthcare schemes.
+
+**Problem:** A lot of rural patients cannot understand their medical reports due to medical jargon, language barriers, and limited access to healthcare professionals.
+
+**Solution:** AI-powered platform that provides instant medical report interpretation through voice-based explanations in regional languages, optimized for low-bandwidth environments and low-literacy users.
+
+**Key Innovation:** RAG-powered medical interpretation combined with government scheme matching, delivered through optimized voice interfaces specifically designed for rural India.
+
+**Target Impact:**
+- Reduce treatment delays caused by medical literacy gaps
+- Increase awareness and utilization of government healthcare schemes
+- Provide accessible healthcare guidance to underserved communities
 
 ---
 
@@ -15,125 +26,139 @@ HealthAccess AI is a low-bandwidth, multilingual, voice-first healthcare access 
 │                          USER INTERFACE LAYER                                 │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   • Mobile Application (Android / iOS)                                       │
-│   • Web Application                                                          │
-│   • Language Selection (Telugu, Hindi, etc.)                                 │
-│   • Report Upload / Scan Interface                                           │
+│   • Progressive Web Application (React/Next.js)                              │                                          │
+│   • Language Selection Interface                                             │
+│   • Report Upload (Image/PDF/Camera)                                         │
 │                                                                              │
 └───────────────────────────────────────┬──────────────────────────────────────┘
-                                        │
+                                        │ HTTPS
                                         ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
 │                            API GATEWAY LAYER                                  │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   • Authentication & Authorization                                           │
-│   • Rate Limiting & Throttling                                                │
+│   Amazon API Gateway                                                         │
+│   • Authentication & Rate Limiting                                           │
 │   • Request Routing                                                          │
-│   • Load Balancing                                                           │
-│   • Caching & Compression                                                    │
+│   • Response Compression                                                     │
 │                                                                              │
 └───────────────────────────────────────┬──────────────────────────────────────┘
                                         │
                                         ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                        DOCUMENT PROCESSING LAYER                               │
+│                    ORCHESTRATION & PII LAYER                                  │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐                    │
-│   │ Image / PDF  │ → │ OCR Engine   │ → │ Text         │                    │
-│   │ Upload       │   │ (Textract /  │   │ Extraction  │                    │
-│   │ Handler      │   │  Tesseract)  │   │              │                    │
-│   └──────────────┘   └──────────────┘   └──────────────┘                    │
+│   AWS Lambda (Serverless Backend)                                            │
+│   • PII Anonymization (Remove: name, phone, address, IDs)                    │
+│   • Workflow Orchestration                                                   │
+│   • Response Aggregation                                                     │
 │                                                                              │
 └───────────────────────────────────────┬──────────────────────────────────────┘
                                         │
                                         ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                           AI PROCESSING LAYER                                  │
+│                        DOCUMENT PROCESSING LAYER                              │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   1. Document Understanding                                                  │
-│   ┌───────────────────────────────────────────────────────────────┐          │
-│   │ • Report Type Classification                                  │          │
-│   │ • Key-Value Extraction (Hb, BP, Sugar, etc.)                  │          │
-│   │ • Medical Named Entity Recognition (NER)                      │          │
-│   └───────────────────────────────────────────────────────────────┘          │
-│                                                                              │
-│   2. LLM Reasoning Engine                                                     │
-│   ┌───────────────────────────────────────────────────────────────┐          │
-│   │ • Medical jargon simplification                                │          │
-│   │ • Context-aware explanation                                   │          │
-│   │ • Personalized health guidance                                │          │
-│   │   (AWS Bedrock / Claude / LLaMA)                               │          │
-│   └───────────────────────────────────────────────────────────────┘          │
-│                                                                              │
-│   3. Retrieval-Augmented Generation (RAG)                                    │
-│   ┌───────────────────────────────────────────────────────────────┐          │
-│   │ • Medical Knowledge Base Retrieval                             │          │
-│   │ • Government Scheme Matching                                   │          │
-│   │ • Vector Search (Embeddings)                                   │          │
-│   └───────────────────────────────────────────────────────────────┘          │
+│   Amazon Textract                                                            │
+│   • OCR Text Extraction                                                      │
+│   • Medical Entity Recognition                                               │
+│   • Parameter Extraction (Hb, BP, glucose, etc.)                             │
 │                                                                              │
 └───────────────────────────────────────┬──────────────────────────────────────┘
                                         │
                                         ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                        OUTPUT GENERATION LAYER                                 │
+│                           AI PROCESSING LAYER                                 │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   • Structured Health Summary (Text)                                         │
-│   • Multilingual Translation                                                  │
-│     (Telugu, Hindi, Tamil, Kannada, Bengali, etc.)                           │
+│   Amazon Bedrock (Claude 4.5 Haiku)                                          │
+│   • Medical Interpretation                                                   │
+│   • Jargon Simplification                                                    │
+│   • Risk-Aware Guidance                                                      │
 │                                                                              │
-│   • Text-to-Speech Conversion (AWS Polly)                                    │
-│   • Audio Formatting & Compression                                           │
-│                                                                              │
-│   • SMS / Notification Action Plan                                           │
+│   Retrieval-Augmented Generation (RAG)                                       │
+│   • Amazon OpenSearch (Vector Database)                                      │
+│   • Medical Knowledge Retrieval                                              │
+│   • Government Scheme Matching                                               │
 │                                                                              │
 └───────────────────────────────────────┬──────────────────────────────────────┘
                                         │
                                         ▼
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│                          DATA & STORAGE LAYER                                  │
+│                        OUTPUT GENERATION LAYER                                │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│   • Medical Knowledge Base                                                   │
-│   • Government Scheme Database                                               │
-│   • User Profile Database                                                    │
+│   Text Processing                                                            │
+│   • Summary Generation                                                       │
+│   • Regional Language Translation                                            │
 │                                                                              │
-│   • Document Storage (AWS S3)                                                 │
-│   • Audio Cache (Redis)                                                      │
-│   • Analytics, Logs & Monitoring                                             │
+│   Amazon Polly (Neural TTS)                                                  │
+│   • Voice Synthesis (Hindi, Telugu, Tamil, Kannada, etc.)                    │
+│   • Audio Compression (32kbps, <200KB)                                       │
+│                                                                              │
+└───────────────────────────────────────┬──────────────────────────────────────┘
+                                        │
+                                        ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                          STORAGE LAYER                                        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   Amazon S3: Document storage (24-hour auto-delete)                          │
+│   ElastiCache (Redis): Audio caching (7 days)                                │
+│   RDS PostgreSQL: Medical knowledge base, government schemes                 │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Data Flow
+---
+
+## Data Flow
+
+### End-to-End Processing Pipeline
 
 ```
 User Upload → OCR → Document Classification → 
 Knowledge Retrieval → LLM Reasoning → Simplification → 
-Translation → TTS → Compressed Audio → User
+Translation → Text-to-Speech → Compressed Audio → User
 ```
 
-### Technology Stack
+### Detailed Flow with Components
 
-| Layer | Technologies |
-|-------|-------------|
-| **OCR** | AWS Textract / Google Cloud Vision / Tesseract |
-| **LLM** | AWS Bedrock (Claude) / Llama 3 / GPT-4 |
-| **TTS** | AWS Polly / Google Cloud TTS |
-| **Backend** | FastAPI / Flask (Python), AWS Lambda |
-| **Storage** | AWS S3, PostgreSQL, FAISS / Pinecone |
-| **Frontend** | React / Next.js (PWA) |
-| **Infrastructure** | AWS / Google Cloud, CloudFront |
+```
+┌─────────────┐   ┌──────────────┐   ┌───────────────┐   ┌──────────────┐
+│ User Upload │ → │   Textract   │ → │ PII Remove &  │ → │   Bedrock    │
+│ Image/PDF   │   │  (OCR Text)  │   │   Classify    │   │   (Claude)   │
+└─────────────┘   └──────────────┘   └───────────────┘   └──────────────┘
+                                                                  │
+                                                                  ▼
+┌─────────────┐   ┌──────────────┐   ┌───────────────┐   ┌──────────────┐
+│    User     │ ← │    Polly     │ ← │  Translate to │ ← │  OpenSearch  │
+│  Receives   │   │ (Audio Gen)  │   │ Hindi/Telugu  │   │  (RAG Query) │
+└─────────────┘   └──────────────┘   └───────────────┘   └──────────────┘
+```
+
+## Technology Stack
+
+### Core AWS Services
+
+| Component | Technology | Purpose |
+|-----------|-----------|---------|
+| **OCR** | Amazon Textract | Extract text from medical reports (images/PDFs) |
+| **AI Reasoning** | Amazon Bedrock (Claude 4.5 Haiku) | Medical interpretation and simplification |
+| **Voice Output** | Amazon Polly (Neural TTS) | Regional language audio generation |
+| **Knowledge Base** | Amazon OpenSearch | Vector database for RAG-based retrieval |
+| **Speech Input** | Amazon Transcribe | Voice-to-text conversion (future) |
+| **Backend** | AWS Lambda | Serverless orchestration and processing |
+| **API Gateway** | Amazon API Gateway | Request routing and rate limiting |
+| **Storage** | Amazon S3 | Temporary document storage (24h retention) |
+| **Cache** | Amazon ElastiCache (Redis) | Audio file caching |
+| **Database** | Amazon RDS (PostgreSQL) | Medical knowledge and government schemes |
 
 ---
 
 ## User Flow Diagram
-
-### HealthAccess AI - Dark Mode Architecture
 
 ```mermaid
 %%{
@@ -141,82 +166,70 @@ Translation → TTS → Compressed Audio → User
     "theme": "dark",
     "themeVariables": {
       "darkMode": true,
-      "background": "#111111",
       "primaryColor": "#2196F3",
       "secondaryColor": "#FF9800",
       "tertiaryColor": "#9C27B0",
-      "lineColor": "#FFFFFF",
-      "mainBkg": "#1a1a2e",
-      "nodeBkg": "#1a1a2e",
-      "clusterBkg": "#0a0a0a",
+      "lineColor": "#E0E0E0",
+      "textColor": "#FFFFFF",
+      "mainBkg": "#1e1e2e",
+      "nodeBkg": "#1e1e2e",
+      "clusterBkg": "#121212",
       "clusterBorder": "#2196F3"
     },
     "flowchart": {
       "curve": "basis",
-      "padding": 50,
-      "nodeSpacing": 100,
-      "rankSpacing": 150,
-      "diagramPadding": 20
+      "padding": 40,
+      "nodeSpacing": 80,
+      "rankSpacing": 120
     }
   }
 }%%
 
 flowchart TD
-    %% Node Styling Definitions
-    classDef homeNode fill:#1a3a5c,stroke:#2196F3,stroke-width:3px,color:#ffffff,font-size:16px,padding:15px
-    classDef processNode fill:#3d2914,stroke:#FF9800,stroke-width:3px,color:#ffffff,font-size:16px,padding:15px
-    classDef resultNode fill:#1a2e3a,stroke:#9C27B0,stroke-width:3px,color:#ffffff,font-size:16px,padding:15px
+    %% Styling
+    classDef inputStyle fill:#1a3a5c,stroke:#2196F3,stroke-width:2px,color:#ffffff
+    classDef processStyle fill:#3d2914,stroke:#FF9800,stroke-width:2px,color:#ffffff
+    classDef outputStyle fill:#1a2e3a,stroke:#9C27B0,stroke-width:2px,color:#ffffff
     
-    %% Screen 1: Home (Input Stage) - Dark Blue
-    subgraph HOME[" 🏠 HOME - INPUT STAGE "]
+    %% Input Stage
+    subgraph INPUT[" USER INPUT "]
         direction TB
-        A1["📱 Smartphone / User"]:::homeNode
-        A2["User Selects Language<br/>(Telugu)"]:::homeNode
-        A3["🖱️ Clicks 'Scan Report' Button"]:::homeNode
+        A1["Open Application"]:::inputStyle
+        A2["Select Language<br/>Hindi | Telugu | Tamil"]:::inputStyle
+        A3["Upload Medical Report<br/>Image | PDF | Camera Scan"]:::inputStyle
         
-        A1 --> A2
-        A2 --> A3
+        A1 --> A2 --> A3
     end
     
-    %% Screen 2: Processing (Analysis Stage) - Gold/Orange
-    subgraph PROCESS[" ⚙️ PROCESSING - ANALYSIS STAGE "]
+    %% Processing Stage
+    subgraph PROCESS[" AI PROCESSING "]
         direction TB
-        B1["📄 Document Scanning"]:::processNode
-        B2["🔍 Analyzing Medical Text..."]:::processNode
-        B3["🏛️ Checking Govt Schemes..."]:::processNode
+        B1["Text Extraction<br/>Amazon Textract"]:::processStyle
+        B2["PII Anonymization<br/>Remove Personal Information"]:::processStyle
+        B3["Medical Interpretation<br/>Amazon Bedrock Claude 4.5"]:::processStyle
+        B4["Knowledge Retrieval<br/>RAG - OpenSearch Vector DB"]:::processStyle
+        B5["Generate Summary<br/>Simplified Explanation"]:::processStyle
         
-        B1 --> B2
-        B2 --> B3
+        B1 --> B2 --> B3 --> B4 --> B5
     end
     
-    %% Screen 3: Result Dashboard (Output Stage) - Green/Purple
-    subgraph RESULT[" 📊 RESULT - OUTPUT STAGE "]
+    %% Output Stage
+    subgraph OUTPUT[" USER OUTPUT "]
         direction TB
-        C1["🔊 Play Audio Explanation"]:::resultNode
-        C2["📋 Health Summary<br/>(Hb Low)"]:::resultNode
-        C3["✉️ Scheme Matched:<br/>Ayushman Bharat"]:::resultNode
-        C4["📤 Send SMS Action Plan"]:::resultNode
+        C1["Audio Explanation<br/>Amazon Polly TTS"]:::outputStyle
+        C2["Text Summary<br/>Health Status & Findings"]:::outputStyle
+        C3["Government Scheme Match<br/>Ayushman Bharat | State Programs"]:::outputStyle
+        C4["Action Plan<br/>Next Steps & Location"]:::outputStyle
         
-        C1 --> C2
-        C2 --> C3
-        C3 --> C4
+        C1 --> C2 --> C3 --> C4
     end
     
-    %% Main Flow Connections
-    A3 -.->|"📤 Uploads Image"| B1
-    B3 -.->|"✅ Analysis Complete"| C1
+    %% Flow Connections
+    A3 -.->|"Document Uploaded"| B1
+    B5 -.->|"Processing Complete"| C1
     
-    %% Styling for subgraphs
-    style HOME fill:#0d1b2a,stroke:#2196F3,stroke-width:3px,color:#2196F3
-    style PROCESS fill:#1a0f00,stroke:#FF9800,stroke-width:3px,color:#FF9800
-    style RESULT fill:#0f1a1a,stroke:#9C27B0,stroke-width:3px,color:#9C27B0
+    %% Subgraph Styling
+    style INPUT fill:#0d1b2a,stroke:#2196F3,stroke-width:2px
+    style PROCESS fill:#1a0f00,stroke:#FF9800,stroke-width:2px
+    style OUTPUT fill:#0f1a1a,stroke:#9C27B0,stroke-width:2px
 ```
-
----
-
-## Key Design Principles
-
-- **Voice-First**: Multilingual audio output for accessibility
-- **Low-Bandwidth**: Optimized for poor connectivity areas
-- **Privacy-First**: No persistent storage of sensitive medical data
-- **Non-Diagnostic**: Provides information, not medical advice
