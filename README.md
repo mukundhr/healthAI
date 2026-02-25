@@ -94,20 +94,34 @@ AccessAI provides instant, voice-based explanations of medical reports and conne
 
 ## Technology Stack
 
-### Input & Ingestion
+### Frontend
 
 | Component | Technology |
 |-----------|------------|
-| **OCR** | Amazon Textract |
-| **Speech-to-Text** | Amazon Transcribe |
-| **Frontend** | React / Next.js (Progressive Web App) |
+| **Framework** | React 18 + Vite |
+| **Routing** | React Router DOM |
+| **Styling** | Tailwind CSS |
+| **UI Components** | Radix UI primitives |
+| **Language** | TypeScript |
+| **Build Tool** | Vite |
 
-### AI & Reasoning
+### Backend
+
+| Component | Technology |
+|-----------|------------|
+| **API Framework** | FastAPI |
+| **Server** | Uvicorn |
+| **AWS SDK** | boto3 |
+| **Data Validation** | Pydantic |
+
+### AI & Cloud Services
 
 | Component | Technology |
 |-----------|------------|
 | **LLM** | Amazon Bedrock (Claude) |
-| **Prompting** | Medical simplification and risk-aware summaries |
+| **OCR** | Amazon Textract |
+| **Text-to-Speech** | Amazon Polly |
+| **Storage** | Amazon S3 |
 
 ### Knowledge Retrieval
 
@@ -116,20 +130,50 @@ AccessAI provides instant, voice-based explanations of medical reports and conne
 | **Vector Search** | FAISS / OpenSearch |
 | **Data Sources** | Curated medical references and government policy data |
 
-### Output
+---
 
-| Component | Technology |
-|-----------|------------|
-| **Text-to-Speech** | Amazon Polly |
-| **Channels** | Web audio, SMS fallback |
+## Getting Started
 
-### Backend & Infrastructure
+### Prerequisites
 
-| Component | Technology |
-|-----------|------------|
-| **API Layer** | FastAPI / AWS Lambda |
-| **Storage** | Amazon S3 (temporary, session-based) |
-| **Security** | AWS IAM, encrypted APIs |
+- Node.js 18+
+- Python 3.10+
+- AWS Account (for cloud services)
+
+### Frontend Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+### Backend Setup
+
+```bash
+cd backend
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Start the server
+uvicorn main:app --reload
+```
+
+### Environment Variables
+
+Copy the example environment files and configure them:
+
+```bash
+cp .env.example .env
+cp backend/.env.example backend/.env
+```
 
 ---
 
