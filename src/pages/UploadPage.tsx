@@ -8,6 +8,8 @@ import Navbar from "@/components/Navbar";
 import DisclaimerBar from "@/components/DisclaimerBar";
 import GlassCard from "@/components/GlassCard";
 import WaveformVisualizer from "@/components/WaveformVisualizer";
+import { apiClient } from "@/lib/api";
+import { AnalysisResponse, DocumentStatus, DocumentUploadResponse, SchemeMatchResponse } from "@/lib/api";
 
 type Step = "upload" | "processing" | "results";
 
@@ -18,6 +20,13 @@ const UploadPage = () => {
   const [audioSpeed, setAudioSpeed] = useState<"1x" | "1.5x">("1x");
   const [dragOver, setDragOver] = useState(false);
 
+  // API related state
+  const [uploadResponse, setUploadResponse] = useState<DocumentUploadResponse | null>(null);
+  const [documentStatus, setDocumentStatus] = useState<DocumentStatus | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
+  const [schemeResult, setSchemeResult] = useState<SchemeMatchResponse | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
   // Scheme matching state
   const [schemeState, setSchemeState] = useState("Karnataka");
   const [schemeIncome, setSchemeIncome] = useState("below-1l");
@@ -25,9 +34,145 @@ const UploadPage = () => {
   const [schemeBpl, setSchemeBpl] = useState(true);
   const [showSchemes, setShowSchemes] = useState(false);
 
-  const simulateUpload = () => {
-    setStep("processing");
-    setTimeout(() => setStep("results"), 2500);
+  // Audio state
+  const [hindiAudioUrl, setHindiAudioUrl] = useState<string | null>(null);
+  const [kannadaAudioUrl, setKannadaAudioUrl] = useState<string | null>(null);
+
+  // Handle document upload
+  const handleUpload = async (file: File) => {
+    try {
+      setStep("processing");
+      
+      const response = await apiClient.uploadDocument(file);
+      setUploadResponse(response);
+      
+      // Poll for processing status
+      const pollInterval = setInterval(async () => {
+        const status = await apiClient.getDocumentStatus(response.session_id);
+        setDocumentStatus(status);
+        
+        if (status.status === "completed") {
+          clearInterval(pollInterval);
+          setStep("results");
+          // Automatically analyze
+          await analyzeDocument(response.session_id, response.document_id);
+        } else if (status.status === "failed") {
+          clearInterval(pollInterval);
+          setStep("upload");
+          alert("Processing failed. Please try again.");
+        }
+      }, 2000);
+      
+    } catch (error) {
+      console.error("Upload error:", error);
+      setStep("upload");
+      alert("Upload failed. Please try again.");
+    }
+  };
+
+  // Handle drag and drop
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  // Handle file input
+  const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      handleUpload(e.target.files[0]);
+    }
+  };
+
+  // Analyze document
+  const analyzeDocument = async (sessionId: string, documentId: string) => {
+    try {
+      setIsAnalyzing(true);
+      
+      const analysis = await apiClient.analyzeDocument(sessionId, documentId, "en");
+      setAnalysisResult(analysis);
+      
+      // Generate audio
+      await generateAudio(analysis.explanation);
+      
+    } catch (error) {
+      console.error("Analysis error:", error);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Generate audio
+  const generateAudio = async (text: string) => {
+    try {
+      const hindiResponse = await apiClient.synthesizeSpeech(text, "hi");
+      const kannadaResponse = await apiClient.synthesizeSpeech(text, "kn");
+      
+      setHindiAudioUrl(hindiResponse.audio_url);
+      setKannadaAudioUrl(kannadaResponse.audio_url);
+    } catch (error) {
+      console.error("Audio synthesis error:", error);
+    }
+  };
+
+  // Find eligible schemes
+  const findEligibleSchemes = async () => {
+    try {
+      const response = await apiClient.matchSchemes(
+        schemeState,
+        schemeIncome,
+        parseInt(schemeAge),
+        schemeBpl
+      );
+      setSchemeResult(response);
+      setShowSchemes(true);
+    } catch (error) {
+      console.error("Scheme matching error:", error);
+    }
+  };
+
+  // Play audio
+  const playAudio = async (lang: string) => {
+    if (playingLang === lang) {
+      setPlayingLang(null);
+      return;
+    }
+
+    setPlayingLang(lang);
+    
+    try {
+      let audioUrl = lang === "Hindi" ? hindiAudioUrl : kannadaAudioUrl;
+      
+      if (!audioUrl && analysisResult) {
+        const response = await apiClient.synthesizeSpeech(
+          analysisResult.explanation,
+          lang === "Hindi" ? "hi" : "kn"
+        );
+        
+        audioUrl = response.audio_url;
+        if (lang === "Hindi") {
+          setHindiAudioUrl(audioUrl);
+        } else {
+          setKannadaAudioUrl(audioUrl);
+        }
+      }
+
+      if (audioUrl) {
+        const audio = new Audio(audioUrl);
+        audio.playbackRate = audioSpeed === "1x" ? 1 : 1.5;
+        audio.play();
+        
+        audio.onended = () => {
+          setPlayingLang(null);
+        };
+      }
+    } catch (error) {
+      console.error("Audio playback error:", error);
+      setPlayingLang(null);
+    }
   };
 
   return (
@@ -65,19 +210,27 @@ const UploadPage = () => {
                   <div
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
-                    onDrop={(e) => { e.preventDefault(); setDragOver(false); simulateUpload(); }}
+                    onDrop={handleDrop}
                     className={`border-2 border-dashed rounded-2xl p-10 text-center transition-colors cursor-pointer ${
                       dragOver ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"
                     }`}
-                    onClick={simulateUpload}
                   >
-                    <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-                    <p className="text-foreground font-medium mb-1">
-                      Drag & drop your report here
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      or click to browse · PDF, JPG, PNG
-                    </p>
+                    <input
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      onChange={handleFileInput}
+                      className="hidden"
+                      id="file-upload"
+                    />
+                    <label htmlFor="file-upload" className="cursor-pointer">
+                      <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
+                      <p className="text-foreground font-medium mb-1">
+                        Drag & drop your report here
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        or click to browse · PDF, JPG, PNG
+                      </p>
+                    </label>
                   </div>
                 </motion.div>
               )}
@@ -114,10 +267,19 @@ const UploadPage = () => {
                   <CheckCircle2 className="w-5 h-5 text-accent" />
                   <div>
                     <p className="text-sm font-medium text-foreground">Report processed successfully</p>
-                    <p className="text-xs text-muted-foreground">OCR Confidence: 94%</p>
+                    <p className="text-xs text-muted-foreground">
+                      OCR Confidence: {documentStatus?.ocr_confidence?.toFixed(0) || 'Processing...'}%
+                    </p>
                   </div>
                   <button
-                    onClick={() => setStep("upload")}
+                    onClick={() => {
+                      setStep("upload");
+                      setUploadResponse(null);
+                      setDocumentStatus(null);
+                      setAnalysisResult(null);
+                      setSchemeResult(null);
+                      setShowSchemes(false);
+                    }}
                     className="ml-auto text-xs text-primary hover:underline"
                   >
                     Upload another
@@ -135,83 +297,89 @@ const UploadPage = () => {
                 <h3 className="font-display font-bold text-lg mb-4 text-foreground flex items-center gap-2">
                   <Brain className="w-5 h-5 text-primary" />
                   Simplified Explanation
+                  {isAnalyzing && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
                 </h3>
-                <div className="space-y-3 text-sm leading-relaxed text-secondary-foreground">
-                  <p>
-                    Your blood test results are mostly within normal range. Your <span className="text-primary font-medium">hemoglobin level is 12.8 g/dL</span>, which is within healthy limits.
-                  </p>
-                  <p>
-                    Your <span className="text-primary font-medium">blood sugar (fasting)</span> is at 110 mg/dL — slightly above the standard 100 mg/dL threshold. This is considered <span className="text-accent font-medium">pre-diabetic range</span> and worth discussing with your doctor.
-                  </p>
-                  <p>
-                    All other values including liver function and kidney function markers appear normal.
-                  </p>
-                </div>
+                {analysisResult ? (
+                  <div className="space-y-3 text-sm leading-relaxed text-secondary-foreground">
+                    {analysisResult.explanation.split('\n\n').map((paragraph, i) => (
+                      <p key={i}>{paragraph}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    <span className="ml-2 text-sm text-muted-foreground">Analyzing your report...</span>
+                  </div>
+                )}
 
                 {/* Confidence Panel */}
-                <div className="mt-6 grid grid-cols-3 gap-3">
-                  {[
-                    { label: "AI Confidence", value: 87 },
-                    { label: "OCR Accuracy", value: 94 },
-                    { label: "Clarity", value: 72, text: "Medium" },
-                  ].map((m) => (
-                    <div key={m.label} className="text-center">
-                      <p className="text-xs text-muted-foreground mb-1.5">{m.label}</p>
-                      <div className="h-2 rounded-full bg-muted overflow-hidden">
-                        <motion.div
-                          className="h-full gradient-bg rounded-full"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${m.value}%` }}
-                          transition={{ duration: 0.8, delay: 0.3 }}
-                        />
+                {analysisResult && (
+                  <div className="mt-6 grid grid-cols-3 gap-3">
+                    {[
+                      { label: "AI Confidence", value: analysisResult.confidence },
+                      { label: "OCR Accuracy", value: Math.round(analysisResult.ocr_confidence) },
+                      { label: "Clarity", value: 72, text: "Medium" },
+                    ].map((m) => (
+                      <div key={m.label} className="text-center">
+                        <p className="text-xs text-muted-foreground mb-1.5">{m.label}</p>
+                        <div className="h-2 rounded-full bg-muted overflow-hidden">
+                          <motion.div
+                            className="h-full gradient-bg rounded-full"
+                            initial={{ width: 0 }}
+                            animate={{ width: `${m.value}%` }}
+                            transition={{ duration: 0.8, delay: 0.3 }}
+                          />
+                        </div>
+                        <p className="text-xs text-foreground mt-1 font-medium">
+                          {m.text || `${m.value}%`}
+                        </p>
                       </div>
-                      <p className="text-xs text-foreground mt-1 font-medium">
-                        {m.text || `${m.value}%`}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </GlassCard>
 
               {/* Questions for Doctor */}
-              <GlassCard delay={0.2}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
-                    <MessageSquareText className="w-5 h-5 text-primary" />
-                    Questions for Your Doctor
-                  </h3>
-                  <div className="flex gap-2">
-                    <button className="glass-card p-2 hover:text-foreground text-muted-foreground transition-colors">
-                      <Copy className="w-4 h-4" />
-                    </button>
-                    <button className="glass-card p-2 hover:text-foreground text-muted-foreground transition-colors">
-                      <Download className="w-4 h-4" />
-                    </button>
+              {analysisResult && (
+                <GlassCard delay={0.2}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
+                      <MessageSquareText className="w-5 h-5 text-primary" />
+                      Questions for Your Doctor
+                    </h3>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(analysisResult.questions.join('\n'));
+                        }}
+                        className="glass-card p-2 hover:text-foreground text-muted-foreground transition-colors"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                      <button className="glass-card p-2 hover:text-foreground text-muted-foreground transition-colors">
+                        <Download className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <ol className="space-y-3 text-sm text-secondary-foreground">
-                  {[
-                    "My fasting blood sugar is 110 mg/dL. Should I be concerned about pre-diabetes?",
-                    "What lifestyle changes would you recommend to bring my blood sugar within range?",
-                    "Should I get an HbA1c test to confirm my average blood sugar levels?",
-                    "Are there any dietary restrictions I should follow based on these results?",
-                    "How soon should I get my blood tested again for follow-up?",
-                  ].map((q, i) => (
-                    <motion.li
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.4 + i * 0.08 }}
-                      className="flex gap-3"
-                    >
-                      <span className="text-primary font-display font-bold">{i + 1}.</span>
-                      <span>{q}</span>
-                    </motion.li>
-                  ))}
-                </ol>
-              </GlassCard>
+                  <ol className="space-y-3 text-sm text-secondary-foreground">
+                    {analysisResult.questions.map((q, i) => (
+                      <motion.li
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 + i * 0.08 }}
+                        className="flex gap-3"
+                      >
+                        <span className="text-primary font-display font-bold">{i + 1}.</span>
+                        <span>{q}</span>
+                      </motion.li>
+                    ))}
+                  </ol>
+                </GlassCard>
+              )}
 
               {/* Audio Output */}
+              {analysisResult && (
               <GlassCard delay={0.3}>
                 <h3 className="font-display font-bold text-lg mb-5 text-foreground flex items-center gap-2">
                   <Volume2 className="w-5 h-5 text-primary" />
@@ -224,7 +392,7 @@ const UploadPage = () => {
                     return (
                       <button
                         key={lang}
-                        onClick={() => setPlayingLang(isPlaying ? null : lang)}
+                        onClick={() => playAudio(lang)}
                         className="flex-1 glass-card flex items-center gap-4 p-4 hover:border-primary/30 transition-all group"
                       >
                         <div className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center flex-shrink-0">
@@ -260,6 +428,7 @@ const UploadPage = () => {
                   ))}
                 </div>
               </GlassCard>
+              )}
 
               {/* Scheme Matching */}
               <GlassCard delay={0.4}>
@@ -320,7 +489,7 @@ const UploadPage = () => {
                 </div>
 
                 <button
-                  onClick={() => setShowSchemes(true)}
+                  onClick={findEligibleSchemes}
                   className="btn-primary-gradient w-full py-3 text-sm font-semibold"
                 >
                   Find Eligible Schemes
@@ -334,32 +503,19 @@ const UploadPage = () => {
                       exit={{ opacity: 0, height: 0 }}
                       className="mt-5 space-y-4 overflow-hidden"
                     >
-                      {[
-                        {
-                          name: "Ayushman Bharat (PM-JAY)",
-                          reason: "BPL household with income below ₹1,00,000",
-                          docs: "Aadhaar Card, BPL Certificate, Income Certificate",
-                          link: "https://pmjay.gov.in",
-                        },
-                        {
-                          name: "Vajpayee Arogyashree",
-                          reason: "Karnataka resident with BPL card",
-                          docs: "BPL Card, Aadhaar, State Domicile",
-                          link: "https://arogya.karnataka.gov.in",
-                        },
-                      ].map((scheme, i) => (
+                      {schemeResult?.schemes.map((scheme, i) => (
                         <motion.div
-                          key={scheme.name}
+                          key={scheme.id}
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: i * 0.1 }}
                           className="glass-card p-4 space-y-2"
                         >
                           <h4 className="font-display font-semibold text-foreground">{scheme.name}</h4>
-                          <p className="text-xs text-accent"><span className="font-medium">Eligible because:</span> {scheme.reason}</p>
-                          <p className="text-xs text-muted-foreground"><span className="font-medium text-secondary-foreground">Documents needed:</span> {scheme.docs}</p>
+                          <p className="text-xs text-accent"><span className="font-medium">Eligible because:</span> {scheme.match_reason}</p>
+                          <p className="text-xs text-muted-foreground"><span className="font-medium text-secondary-foreground">Documents needed:</span> {scheme.documents_required.join(', ')}</p>
                           <a
-                            href={scheme.link}
+                            href={scheme.apply_link}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-block text-xs text-primary hover:underline mt-1"
