@@ -1,8 +1,3 @@
-"""
-Access
-VectorAI Knowledge Retrieval Service-based search for medical references and government schemes
-"""
-
 import logging
 from typing import List, Dict, Any, Optional
 import json
@@ -11,8 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 class KnowledgeRetrievalService:
-    """Knowledge retrieval using FAISS for vector search"""
-    
+ 
     def __init__(self):
         self.medical_index = None
         self.schemes_index = None
@@ -21,7 +15,6 @@ class KnowledgeRetrievalService:
         self._initialized = False
     
     def initialize(self):
-        """Initialize knowledge base with medical references and schemes"""
         if self._initialized:
             return
             
@@ -37,7 +30,6 @@ class KnowledgeRetrievalService:
         logger.info("Knowledge retrieval initialized")
     
     def _load_medical_references(self):
-        """Load curated medical references"""
         # In production, this would load from a FAISS index
         # For now, we'll use a simple in-memory approach
         self.medical_metadata = [
@@ -110,7 +102,6 @@ class KnowledgeRetrievalService:
         logger.info(f"Loaded {len(self.medical_metadata)} medical references")
     
     def _load_government_schemes(self):
-        """Load government healthcare schemes database"""
         self.schemes_metadata = [
             {
                 "id": "scheme_001",
@@ -243,7 +234,6 @@ class KnowledgeRetrievalService:
         logger.info(f"Loaded {len(self.schemes_metadata)} government schemes")
     
     async def search_medical_references(self, query: str, category: Optional[str] = None) -> List[Dict]:
-        """Search medical references by query"""
         query_lower = query.lower()
         
         # Simple keyword-based search (in production, use FAISS)
@@ -274,7 +264,6 @@ class KnowledgeRetrievalService:
         is_bpl: bool,
         conditions: Optional[List[str]] = None
     ) -> List[Dict]:
-        """Match eligible government schemes based on user profile"""
         state_normalized = state.lower().replace(" ", "_")
         
         eligible_schemes = []
@@ -310,13 +299,11 @@ class KnowledgeRetrievalService:
         return eligible_schemes
     
     def _check_income_eligibility(self, scheme: Dict, income_range: str) -> bool:
-        """Check if user meets income eligibility"""
         # For now, most schemes are income-based
         # In production, would have more sophisticated logic
         return True
     
     def _generate_match_reason(self, scheme: Dict, is_bpl: bool, income_range: str) -> str:
-        """Generate explanation for why user is eligible"""
         if is_bpl:
             return f"BPL card holder with income in {income_range} range"
         return f"Based on your profile (State, Income: {income_range})"

@@ -1,8 +1,3 @@
-"""
-AccessAI Audio API Endpoints
-Handles text-to-speech synthesis
-"""
-
 from fastapi import APIRouter, HTTPException
 import logging
 from datetime import datetime, timedelta
@@ -16,16 +11,7 @@ router = APIRouter()
 
 @router.post("/synthesize", response_model=AudioResponse)
 async def synthesize_speech(request: AudioRequest):
-    """
-    Convert text to speech using Amazon Polly.
-    
-    Supports:
-    - Hindi (Aditi voice)
-    - Kannada (Kajal voice)
-    - English (Joanna voice)
-    
-    Returns a presigned URL to the generated audio.
-    """
+
     if not request.text or len(request.text.strip()) == 0:
         raise HTTPException(status_code=400, detail="Text cannot be empty")
     
@@ -55,10 +41,6 @@ async def synthesize_explanation(
     explanation: str,
     language: str = "hi"
 ):
-    """
-    Synthesize the medical explanation into audio.
-    This is a convenience endpoint that wraps the main synthesize endpoint.
-    """
     if not explanation:
         raise HTTPException(status_code=400, detail="Explanation cannot be empty")
     

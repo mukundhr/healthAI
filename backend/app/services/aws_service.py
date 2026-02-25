@@ -1,8 +1,3 @@
-"""
-AccessAI AWS Service Integrations
-Handles OCR (Textract), LLM (Bedrock), TTS (Polly), and Storage (S3)
-"""
-
 import boto3
 import json
 import logging
@@ -16,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 
 class AWSService:
-    """Centralized AWS service management"""
-    
     def __init__(self):
         self.s3_client = None
         self.textract_client = None
@@ -27,7 +20,6 @@ class AWSService:
         self._initialized = False
     
     def initialize_services(self):
-        """Initialize AWS clients"""
         if self._initialized:
             return
             
@@ -58,10 +50,7 @@ class AWSService:
         self._initialized = True
         logger.info("AWS services initialized successfully")
     
-    # ==================== S3 Operations ====================
-    
     async def upload_document(self, file_content: bytes, file_name: str, session_id: str) -> Dict[str, str]:
-        """Upload document to S3"""
         try:
             key = f"sessions/{session_id}/documents/{datetime.now().timestamp()}_{file_name}"
             
@@ -85,7 +74,6 @@ class AWSService:
             raise
     
     async def download_document(self, s3_key: str) -> bytes:
-        """Download document from S3"""
         try:
             response = self.s3_client.get_object(
                 Bucket=settings.AWS_S3_BUCKET,
@@ -97,7 +85,6 @@ class AWSService:
             raise
     
     async def delete_document(self, s3_key: str):
-        """Delete document from S3"""
         try:
             self.s3_client.delete_object(
                 Bucket=settings.AWS_S3_BUCKET,
@@ -107,7 +94,6 @@ class AWSService:
             logger.error(f"S3 delete error: {str(e)}")
     
     async def generate_presigned_url(self, s3_key: str, expiration: int = 3600) -> str:
-        """Generate presigned URL for document access"""
         try:
             url = self.s3_client.generate_presigned_url(
                 'get_object',
@@ -122,10 +108,7 @@ class AWSService:
             logger.error(f"Presigned URL error: {str(e)}")
             raise
     
-    # ==================== Textract (OCR) ====================
-    
     async def extract_text(self, file_content: bytes, file_name: str) -> Dict[str, Any]:
-        """Extract text from document using Amazon Textract"""
         try:
             # Determine if PDF or image
             if file_name.lower().endswith('.pdf'):
@@ -170,15 +153,12 @@ class AWSService:
             logger.error(f"Textract error: {str(e)}")
             raise
     
-    # ==================== Bedrock (LLM) ====================
-    
     async def generate_medical_explanation(
         self,
         extracted_text: str,
         language: str = "en",
         user_context: Optional[Dict[str, Any]] = None
     ) -> Dict[str, Any]:
-        """Generate simplified medical explanation using Claude on Bedrock"""
         try:
             # Build prompt based on language and context
             prompt = self._build_medical_prompt(extracted_text, language, user_context)
@@ -222,8 +202,7 @@ class AWSService:
             raise
     
     def _build_medical_prompt(self, text: str, language: str, context: Optional[Dict]) -> str:
-        """Build prompt for medical explanation"""
-        
+
         lang_instruction = {
             "en": "Respond in English",
             "hi": "Respond in Hindi (हिंदी में जवाब दें)",
@@ -305,7 +284,6 @@ Generate exactly 5 questions, one per line, that would help the patient understa
             return []
     
     def _estimate_confidence(self, explanation: str) -> int:
-        """Estimate confidence based on explanation content"""
         # Simple heuristic - could be enhanced with ML
         uncertainty_indicators = ["may", "might", "could be", "possibly", "不确定", "अनिश्चित"]
         
@@ -313,14 +291,11 @@ Generate exactly 5 questions, one per line, that would help the patient understa
             return 75
         return 85
     
-    # ==================== Polly (TTS) ====================
-    
     async def synthesize_speech(
         self,
         text: str,
         language: str = "hi"
     ) -> Dict[str, Any]:
-        """Convert text to speech using Amazon Polly"""
         try:
             # Select voice based on language
             voice_id = {
@@ -375,10 +350,7 @@ Generate exactly 5 questions, one per line, that would help the patient understa
             logger.error(f"Polly error: {str(e)}")
             raise
     
-    # ==================== Helpers ====================
-    
     def _get_content_type(self, file_name: str) -> str:
-        """Get content type based on file extension"""
         types = {
             '.pdf': 'application/pdf',
             '.jpg': 'image/jpeg',
@@ -392,7 +364,6 @@ Generate exactly 5 questions, one per line, that would help the patient understa
         return types.get(ext, 'application/octet-stream')
     
     def _get_polly_language_code(self, language: str) -> str:
-        """Get Polly language code"""
         codes = {
             "hi": "hi-IN",
             "kn": "kn-IN",
@@ -406,5 +377,4 @@ aws_service = AWSService()
 
 
 def initialize_services():
-    """Initialize AWS services - called on app startup"""
     aws_service.initialize_services()

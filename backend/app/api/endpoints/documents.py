@@ -1,8 +1,3 @@
-"""
-AccessAI Document API Endpoints
-Handles document upload and processing
-"""
-
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 import uuid
@@ -26,11 +21,6 @@ async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...)
 ):
-    """
-    Upload a medical document for processing.
-    
-    Supported formats: PDF, JPG, PNG, TIFF
-    """
     # Validate file type
     allowed_types = ["application/pdf", "image/jpeg", "image/png", "image/tiff"]
     if file.content_type not in allowed_types:
@@ -101,7 +91,6 @@ async def upload_document(
 
 
 async def process_document(session_id: str, file_content: bytes, file_name: str):
-    """Background task to process document with Textract"""
     try:
         sessions_store[session_id]["status"] = ProcessingStatus.PROCESSING
         sessions_store[session_id]["updated_at"] = datetime.now()
@@ -122,7 +111,6 @@ async def process_document(session_id: str, file_content: bytes, file_name: str)
 
 @router.get("/status/{session_id}")
 async def get_document_status(session_id: str):
-    """Get the processing status of a document"""
     if session_id not in sessions_store:
         raise HTTPException(status_code=404, detail="Session not found")
     
@@ -141,7 +129,6 @@ async def get_document_status(session_id: str):
 
 @router.get("/result/{session_id}")
 async def get_document_result(session_id: str):
-    """Get the OCR result of a processed document"""
     if session_id not in sessions_store:
         raise HTTPException(status_code=404, detail="Session not found")
     
@@ -164,7 +151,6 @@ async def get_document_result(session_id: str):
 
 @router.delete("/{session_id}")
 async def delete_document(session_id: str):
-    """Delete a document and its associated data"""
     if session_id not in sessions_store:
         raise HTTPException(status_code=404, detail="Session not found")
     

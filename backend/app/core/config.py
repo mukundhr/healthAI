@@ -1,16 +1,10 @@
-"""
-AccessAI Core Configuration
-Environment-based settings for the application
-"""
-
 from pydantic_settings import BaseSettings
 from typing import List
 from functools import lru_cache
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables"""
-    
+
     # Application
     ENVIRONMENT: str = "development"
     DEBUG: bool = True
@@ -54,7 +48,6 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings() -> Settings:
-    """Get cached settings instance"""
     return Settings()
 
 

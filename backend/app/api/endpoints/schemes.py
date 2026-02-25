@@ -1,8 +1,3 @@
-"""
-AccessAI Government Schemes API Endpoints
-Handles government healthcare scheme matching
-"""
-
 from fastapi import APIRouter, HTTPException
 import logging
 
@@ -25,16 +20,7 @@ SCHEME_LINKS = {
 
 @router.post("/match", response_model=SchemeMatchResponse)
 async def match_schemes(request: SchemeMatchRequest):
-    """
-    Match government healthcare schemes based on user profile.
-    
-    Considers:
-    - State of residence
-    - Income range
-    - Age
-    - BPL status
-    - Medical conditions
-    """
+
     try:
         # Initialize knowledge service if needed
         knowledge_service.initialize()
@@ -67,9 +53,7 @@ async def search_schemes(
     query: str = None,
     scheme_type: str = None
 ):
-    """
-    Search for government schemes by state, query, or type.
-    """
+
     try:
         knowledge_service.initialize()
         
@@ -112,7 +96,6 @@ async def search_schemes(
 
 @router.get("/{scheme_id}")
 async def get_scheme_details(scheme_id: str):
-    """Get detailed information about a specific scheme"""
     try:
         knowledge_service.initialize()
         

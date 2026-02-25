@@ -1,8 +1,3 @@
-"""
-AccessAI Analysis API Endpoints
-Handles medical report analysis using AI
-"""
-
 from fastapi import APIRouter, HTTPException
 import logging
 import time
@@ -20,14 +15,7 @@ sessions_store = {}
 
 @router.post("/explain", response_model=AnalysisResponse)
 async def analyze_medical_report(request: AnalysisRequest):
-    """
-    Analyze a medical report and generate simplified explanation.
-    
-    Uses Amazon Bedrock (Claude) to provide:
-    - Plain language explanation
-    - Doctor questions
-    - Confidence scores
-    """
+
     # Get session
     session = sessions_store.get(request.session_id)
     
@@ -81,7 +69,6 @@ async def analyze_medical_report(request: AnalysisRequest):
 
 @router.get("/result/{session_id}")
 async def get_analysis_result(session_id: str):
-    """Get cached analysis result"""
     session = sessions_store.get(session_id)
     
     if not session:

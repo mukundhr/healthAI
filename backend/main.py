@@ -1,8 +1,3 @@
-"""
-AccessAI Backend - Medical Report Analysis API
-AWS-powered document processing, AI explanation, and text-to-speech
-"""
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
@@ -21,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan handler"""
     logger.info("Starting AccessAI Backend...")
     logger.info(f"Environment: {config.settings.ENVIRONMENT}")
     
