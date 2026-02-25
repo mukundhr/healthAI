@@ -17,6 +17,7 @@ class AWSService:
         self.bedrock_client = None
         self.bedrock_runtime = None
         self.polly_client = None
+        self.comprehend_client = None
         self._initialized = False
     
     def initialize_services(self):
@@ -46,6 +47,9 @@ class AWSService:
         
         # Polly Client
         self.polly_client = session.client('polly')
+        
+        # Comprehend Client (for PII detection)
+        self.comprehend_client = session.client('comprehend')
         
         self._initialized = True
         logger.info("AWS services initialized successfully")

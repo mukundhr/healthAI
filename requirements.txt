@@ -1,5 +1,3 @@
-# AccessAI Backend Dependencies
-
 # FastAPI and ASGI server
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
@@ -23,6 +21,14 @@ python-json-logger==2.0.7
 
 # Environment variables
 python-dotenv==1.0.1
+
+# Image processing (preprocessing / OCR support)
+Pillow==10.4.0
+numpy==1.26.4
+scipy==1.14.0
+
+# OCR fallback
+pytesseract==0.3.10
 
 # Optional: FAISS for vector search (install with specific backend)
 # faiss-cpu==1.8.0

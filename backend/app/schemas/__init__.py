@@ -1,6 +1,6 @@
 """
 AccessAI Pydantic Schemas
-Request and response models for API endpoints
+Request and response models for API endpoints.
 """
 
 from pydantic import BaseModel, Field
@@ -10,24 +10,31 @@ from datetime import datetime
 
 
 class ProcessingStatus(str, Enum):
-    """Document processing status"""
     PENDING = "pending"
+    UPLOADING = "uploading"
+    PREPROCESSING = "preprocessing"
+    EXTRACTING = "extracting"
+    ANALYZING = "analyzing"
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
 
 
 class Language(str, Enum):
-    """Supported output languages"""
     ENGLISH = "en"
     HINDI = "hi"
     KANNADA = "kn"
 
 
+class QualityRating(str, Enum):
+    GOOD = "good"
+    FAIR = "fair"
+    POOR = "poor"
+
+
 # ==================== Document Schemas ====================
 
 class DocumentUploadResponse(BaseModel):
-    """Response after document upload"""
     session_id: str
     document_id: str
     file_name: str
@@ -36,13 +43,24 @@ class DocumentUploadResponse(BaseModel):
     message: str
 
 
+class QualityInfo(BaseModel):
+    blur_score: float = 0
+    contrast_score: float = 0
+    quality_rating: str = "good"
+    issues: List[str] = []
+    is_acceptable: bool = True
+
+
 class DocumentStatusResponse(BaseModel):
-    """Document processing status"""
     session_id: str
     document_id: str
     status: ProcessingStatus
+    status_message: str = ""
     ocr_confidence: Optional[float] = None
+    quality: Optional[QualityInfo] = None
     error_message: Optional[str] = None
+    engine_used: Optional[str] = None
+    fallback_used: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -50,47 +68,80 @@ class DocumentStatusResponse(BaseModel):
 # ==================== Analysis Schemas ====================
 
 class AnalysisRequest(BaseModel):
-    """Request for medical analysis"""
     session_id: str
     document_id: str
     language: Language = Language.ENGLISH
     user_context: Optional[Dict[str, Any]] = None
 
 
-class ExplanationSection(BaseModel):
-    """Section of the medical explanation"""
-    title: str
-    content: str
-    type: str = "general"  # general, warning, info
+class KeyFinding(BaseModel):
+    test_name: str
+    value: str
+    normal_range: str = ""
+    status: str = "normal"
+    explanation: str = ""
+
+
+class AbnormalValue(BaseModel):
+    test_name: str
+    value: str
+    normal_range: str = ""
+    severity: str = "mild"
+    explanation: str = ""
+
+
+class SourceGroundingItem(BaseModel):
+    test_name: str
+    extracted_value: float
+    reference_range: str
+    status: str
 
 
 class AnalysisResponse(BaseModel):
-    """Response for medical analysis"""
     session_id: str
     document_id: str
-    explanation: str
-    explanation_sections: List[ExplanationSection] = []
-    confidence: int
-    ocr_confidence: float
-    questions: List[str]
-    language: Language
-    model: str
-    processing_time_ms: int
+    summary: str = ""
+    key_findings: List[KeyFinding] = []
+    abnormal_values: List[AbnormalValue] = []
+    things_to_note: List[str] = []
+    questions_for_doctor: List[str] = []
+    confidence: int = 0
+    confidence_notes: str = ""
+    ocr_confidence: float = 0
+    source_grounding: List[SourceGroundingItem] = []
+    language: Language = Language.ENGLISH
+    model: str = ""
+    processing_time_ms: int = 0
+
+
+# ==================== Follow-up Chat Schemas ====================
+
+class FollowUpRequest(BaseModel):
+    session_id: str
+    question: str = Field(..., min_length=1, max_length=1000)
+    language: Language = Language.ENGLISH
+
+
+class FollowUpResponse(BaseModel):
+    answer: str
+    related_values: List[str] = []
+    should_ask_doctor: bool = True
+    confidence: str = "medium"
 
 
 # ==================== Scheme Schemas ====================
 
 class SchemeMatchRequest(BaseModel):
-    """Request for scheme matching"""
     state: str = Field(..., description="User's state")
-    income_range: str = Field(..., description="Income range (below-1l, 1l-3l, 3l-5l, above-5l)")
-    age: int = Field(..., ge=0, le=150, description="User's age")
-    is_bpl: bool = Field(default=False, description="BPL card holder")
-    conditions: Optional[List[str]] = Field(default=None, description="Medical conditions")
+    income_range: str = Field(..., description="Income range")
+    age: int = Field(..., ge=0, le=150)
+    is_bpl: bool = Field(default=False)
+    conditions: Optional[List[str]] = None
+    session_id: Optional[str] = Field(None, description="Session ID to pull medical context for RAG")
+    language: Language = Language.ENGLISH
 
 
 class SchemeInfo(BaseModel):
-    """Government scheme information"""
     id: str
     name: str
     type: str
@@ -101,36 +152,39 @@ class SchemeInfo(BaseModel):
     state: str
     match_reason: str
     apply_link: Optional[str] = None
+    helpline: str = ""
+    relevance_score: float = 0
+    action_steps: List[str] = []
+    conditions_covered: List[str] = []
 
 
 class SchemeMatchResponse(BaseModel):
-    """Response for scheme matching"""
     schemes: List[SchemeInfo]
     count: int
+    summary: str = ""
+    rag_used: bool = False
 
 
 # ==================== Audio Schemas ====================
 
 class AudioRequest(BaseModel):
-    """Request for text-to-speech synthesis"""
     text: str = Field(..., min_length=1, max_length=5000)
     language: Language = Language.HINDI
     session_id: Optional[str] = None
 
 
 class AudioResponse(BaseModel):
-    """Response for audio synthesis"""
     audio_url: str
     audio_key: str
     voice_id: str
     language: Language
+    duration_estimate_seconds: Optional[float] = None
     expires_at: datetime
 
 
 # ==================== Health Check ====================
 
 class HealthResponse(BaseModel):
-    """Health check response"""
     status: str
     environment: str
     services: Dict[str, str]

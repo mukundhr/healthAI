@@ -1,12 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { Mic, Globe } from "lucide-react";
-import { useState } from "react";
+import { Mic } from "lucide-react";
 import { motion } from "framer-motion";
 
-const languages = ["English", "हिन्दी", "ಕನ್ನಡ"];
-
 const Navbar = () => {
-  const [lang, setLang] = useState(0);
   const location = useLocation();
 
   return (
@@ -28,14 +24,6 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setLang((l) => (l + 1) % languages.length)}
-            className="glass-card flex items-center gap-1.5 px-3 py-1.5 text-sm text-secondary-foreground hover:text-foreground transition-colors"
-          >
-            <Globe className="w-4 h-4" />
-            <span className="hidden sm:inline">{languages[lang]}</span>
-          </button>
-
           {location.pathname === "/" && (
             <Link
               to="/upload"

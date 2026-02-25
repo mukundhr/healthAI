@@ -1,0 +1,695 @@
+"""
+RAG-based Government Health Scheme Retrieval Service.
+
+Uses **Amazon Bedrock Titan Embeddings** for semantic retrieval and
+**Bedrock Claude** for generation of personalised scheme recommendations.
+
+Pipeline:
+  1. Offline: load schemes.json → embed each scheme via Titan → cache vectors
+  2. Online:  embed user query via Titan
+            → cosine similarity against cached scheme embeddings
+            → post-retrieval hard filters
+            → generate a personalised summary with Bedrock Claude
+"""
+
+import hashlib
+import json
+import logging
+import math
+import os
+import re
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+#  AWS Bedrock Titan Embedding Index
+# ---------------------------------------------------------------------------
+
+class BedrockEmbeddingIndex:
+    """
+    Semantic vector index backed by Amazon Bedrock Titan Embeddings.
+
+    - Embeds documents via ``amazon.titan-embed-text-v2:0``
+    - Persists embeddings to a local JSON cache so re-embedding is skipped
+      when the knowledge-base hasn't changed.
+    - Queries by embedding the search text and computing cosine similarity.
+    """
+
+    def __init__(self):
+        self.embeddings: List[List[float]] = []   # one vector per doc
+        self.doc_norms: List[float] = []
+        self._built = False
+        self._bedrock_runtime = None
+        self._model_id: str = ""
+
+    # ---- helpers ----
+
+    @staticmethod
+    def _cosine(a: List[float], b: List[float], b_norm: float) -> float:
+        dot = sum(x * y for x, y in zip(a, b))
+        a_norm = math.sqrt(sum(x * x for x in a)) or 1.0
+        return dot / (a_norm * b_norm) if b_norm else 0.0
+
+    @staticmethod
+    def _content_hash(documents: List[str]) -> str:
+        """Deterministic hash of all document texts – used to invalidate the cache."""
+        h = hashlib.sha256()
+        for d in documents:
+            h.update(d.encode("utf-8"))
+        return h.hexdigest()[:16]
+
+    # ---- embedding via Bedrock ----
+
+    def _embed_text(self, text: str) -> List[float]:
+        """Call Bedrock Titan Embeddings to get a single vector."""
+        body = json.dumps({
+            "inputText": text[:8000],  # Titan v2 supports up to 8K tokens
+        })
+        response = self._bedrock_runtime.invoke_model(
+            modelId=self._model_id,
+            contentType="application/json",
+            accept="application/json",
+            body=body,
+        )
+        result = json.loads(response["body"].read().decode("utf-8"))
+        return result["embedding"]
+
+    def _embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """Embed a list of texts (sequential calls; Titan has no native batch API)."""
+        vectors = []
+        for i, text in enumerate(texts):
+            vec = self._embed_text(text)
+            vectors.append(vec)
+            if (i + 1) % 10 == 0:
+                logger.info(f"Embedded {i + 1}/{len(texts)} scheme documents")
+        return vectors
+
+    # ---- build / load ----
+
+    def build(
+        self,
+        documents: List[str],
+        bedrock_runtime,
+        model_id: str,
+        cache_dir: Optional[str] = None,
+    ):
+        """
+        Embed all documents via Titan.  If a cache file with the same
+        content-hash exists, load from disk instead of re-calling Bedrock.
+        """
+        self._bedrock_runtime = bedrock_runtime
+        self._model_id = model_id
+
+        content_hash = self._content_hash(documents)
+        cache_path = None
+
+        if cache_dir:
+            os.makedirs(cache_dir, exist_ok=True)
+            cache_path = os.path.join(cache_dir, f"embeddings_{content_hash}.json")
+            if os.path.exists(cache_path):
+                try:
+                    with open(cache_path, "r") as f:
+                        cached = json.load(f)
+                    self.embeddings = cached["embeddings"]
+                    self.doc_norms = cached["doc_norms"]
+                    self._built = True
+                    logger.info(
+                        f"Loaded cached Titan embeddings ({len(self.embeddings)} docs) "
+                        f"from {cache_path}"
+                    )
+                    return
+                except Exception as e:
+                    logger.warning(f"Cache load failed, re-embedding: {e}")
+
+        # Generate fresh embeddings via Bedrock Titan
+        logger.info(f"Generating Titan embeddings for {len(documents)} scheme documents …")
+        self.embeddings = self._embed_batch(documents)
+        self.doc_norms = [
+            math.sqrt(sum(v * v for v in vec)) or 1.0
+            for vec in self.embeddings
+        ]
+        self._built = True
+
+        # Persist to cache
+        if cache_path:
+            try:
+                with open(cache_path, "w") as f:
+                    json.dump(
+                        {"embeddings": self.embeddings, "doc_norms": self.doc_norms},
+                        f,
+                    )
+                logger.info(f"Titan embeddings cached to {cache_path}")
+            except Exception as e:
+                logger.warning(f"Failed to write embedding cache: {e}")
+
+    # ---- query ----
+
+    def query(self, text: str, top_k: int = 10) -> List[Tuple[int, float]]:
+        """Embed the query and return (doc_index, cosine_score) sorted descending."""
+        if not self._built:
+            return []
+
+        query_vec = self._embed_text(text)
+
+        scores: List[Tuple[int, float]] = []
+        for idx, (doc_vec, d_norm) in enumerate(
+            zip(self.embeddings, self.doc_norms)
+        ):
+            sim = self._cosine(query_vec, doc_vec, d_norm)
+            if sim > 0:
+                scores.append((idx, sim))
+
+        scores.sort(key=lambda x: x[1], reverse=True)
+        return scores[:top_k]
+
+
+# ---------------------------------------------------------------------------
+#  Scheme RAG Service
+# ---------------------------------------------------------------------------
+
+class SchemeRAGService:
+    """
+    Retrieval-Augmented Generation service for government health schemes.
+
+    Fully AWS-powered:
+    - **Retrieval**: Amazon Bedrock Titan Embeddings for semantic vector search
+    - **Generation**: Amazon Bedrock Claude for personalised recommendations
+    """
+
+    def __init__(self):
+        self._schemes: List[Dict[str, Any]] = []
+        self._index = BedrockEmbeddingIndex()
+        self._scheme_docs: List[str] = []    # one text blob per scheme
+        self._initialised = False
+
+    @property
+    def schemes(self) -> List[Dict[str, Any]]:
+        """Public read-only access to loaded schemes."""
+        return self._schemes
+
+    @property
+    def index(self) -> BedrockEmbeddingIndex:
+        """Public read-only access to the embedding index."""
+        return self._index
+
+    # ---- initialisation ----
+
+    def initialise(self, json_path: Optional[str] = None):
+        """Load scheme data and build Bedrock Titan embedding index."""
+        if self._initialised:
+            return
+
+        from app.core.config import settings
+        from app.services.aws_service import aws_service
+
+        # Ensure AWS clients are ready
+        aws_service.initialize_services()
+
+        if json_path is None:
+            json_path = str(
+                Path(__file__).resolve().parent.parent / "data" / "schemes.json"
+            )
+
+        if not os.path.exists(json_path):
+            logger.warning(f"Schemes JSON not found at {json_path}")
+            return
+
+        with open(json_path, "r", encoding="utf-8") as f:
+            self._schemes = json.load(f)
+
+        # Build a searchable text document per scheme
+        self._scheme_docs = [self._scheme_to_text(s) for s in self._schemes]
+
+        # Build Titan embedding index (with disk cache)
+        cache_dir = str(
+            Path(__file__).resolve().parent.parent / "data" / ".embedding_cache"
+        )
+        self._index.build(
+            documents=self._scheme_docs,
+            bedrock_runtime=aws_service.bedrock_runtime,
+            model_id=settings.AWS_BEDROCK_EMBEDDING_MODEL_ID,
+            cache_dir=cache_dir,
+        )
+
+        self._initialised = True
+        logger.info(f"SchemeRAGService: loaded {len(self._schemes)} schemes (Titan embeddings)")
+
+    @staticmethod
+    def _scheme_to_text(scheme: Dict[str, Any]) -> str:
+        """Flatten a scheme dict into a single searchable text."""
+        parts = [
+            scheme.get("name", ""),
+            scheme.get("type", ""),
+            scheme.get("description", ""),
+            scheme.get("coverage", ""),
+            scheme.get("income_criteria", ""),
+            scheme.get("state", ""),
+            " ".join(scheme.get("eligibility", [])),
+            " ".join(scheme.get("benefits", [])),
+            " ".join(scheme.get("conditions_covered", [])),
+            " ".join(scheme.get("documents_required", [])),
+        ]
+        return " ".join(parts)
+
+    # ---- retrieval ----
+
+    def retrieve(
+        self,
+        *,
+        state: str = "",
+        income_range: str = "",
+        age: int = 0,
+        is_bpl: bool = False,
+        conditions: Optional[List[str]] = None,
+        medical_text: str = "",
+        top_k: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """
+        Retrieve the most relevant schemes for the user's profile.
+
+        Returns a list of scheme dicts augmented with a `relevance_score`.
+        """
+        if not self._initialised:
+            self.initialise()
+
+        # Build a rich query string from all available context
+        query_parts: List[str] = []
+
+        if state:
+            query_parts.append(f"state {state}")
+        if income_range:
+            query_parts.append(f"income {income_range}")
+        if is_bpl:
+            query_parts.append("BPL below poverty line")
+        if age:
+            if age >= 60:
+                query_parts.append("elderly senior citizen old age geriatric")
+            elif age < 18:
+                query_parts.append("child children paediatric school student")
+            query_parts.append(f"age {age}")
+        if conditions:
+            query_parts.extend(conditions)
+        if medical_text:
+            # Extract meaningful medical keywords from OCR text
+            query_parts.append(self._extract_medical_keywords(medical_text))
+
+        query = " ".join(query_parts)
+        if not query.strip():
+            # Return all schemes if no filtering context
+            return [
+                {**s, "relevance_score": 0.5, "match_reason": "General scheme"}
+                for s in self._schemes[:top_k]
+            ]
+
+        # TF-IDF retrieval
+        results = self._index.query(query, top_k=top_k * 2)  # over-retrieve for filtering
+
+        # Post-retrieval hard filters
+        filtered: List[Dict[str, Any]] = []
+        state_norm = state.lower().replace(" ", "_") if state else ""
+
+        for doc_idx, score in results:
+            scheme = self._schemes[doc_idx]
+
+            # State filter: must be all_india or match user's state
+            scheme_state = scheme.get("state", "all_india")
+            if state_norm and scheme_state != "all_india" and scheme_state != state_norm:
+                continue
+
+            # BPL filter: skip BPL-required schemes if user is not BPL
+            if scheme.get("bpl_required") and not is_bpl:
+                continue
+
+            # Age filter
+            age_criteria = scheme.get("age_criteria", "")
+            if age and not self._check_age_eligible(age, age_criteria):
+                continue
+
+            # Income filter
+            if not self._check_income_eligible(income_range, scheme):
+                continue
+
+            # Generate a specific match reason
+            match_reason = self._generate_match_reason(
+                scheme, state, income_range, age, is_bpl, conditions, score
+            )
+
+            filtered.append({
+                **scheme,
+                "relevance_score": round(score, 3),
+                "match_reason": match_reason,
+            })
+
+            if len(filtered) >= top_k:
+                break
+
+        return filtered
+
+    # ---- Bedrock-powered RAG generation ----
+
+    async def generate_rag_response(
+        self,
+        bedrock_runtime,
+        user_profile: Dict[str, Any],
+        medical_context: str = "",
+        language: str = "en",
+        top_k: int = 8,
+    ) -> Dict[str, Any]:
+        """
+        Full RAG pipeline:
+        1. Retrieve relevant schemes
+        2. Feed them, the user profile, and medical context to Claude
+        3. Return structured, personalised recommendations
+        """
+        from app.core.config import settings
+
+        # Step 1 – Retrieve
+        retrieved = self.retrieve(
+            state=user_profile.get("state", ""),
+            income_range=user_profile.get("income_range", ""),
+            age=user_profile.get("age", 0),
+            is_bpl=user_profile.get("is_bpl", False),
+            conditions=user_profile.get("conditions"),
+            medical_text=medical_context,
+            top_k=top_k,
+        )
+
+        if not retrieved:
+            return {
+                "schemes": [],
+                "summary": "No matching schemes found for your profile.",
+                "count": 0,
+            }
+
+        # Step 2 – Build prompt with retrieved context
+        lang_map = {
+            "en": "English",
+            "hi": "Hindi (हिन्दी)",
+            "kn": "Kannada (ಕನ್ನಡ)",
+        }
+        lang_label = lang_map.get(language, "English")
+
+        scheme_context = self._format_schemes_for_prompt(retrieved)
+
+        prompt = f"""You are AccessAI's Government Scheme Advisor. Based on the user's profile and retrieved scheme data, provide personalised recommendations.
+
+RESPOND IN: {lang_label}
+
+USER PROFILE:
+- State: {user_profile.get('state', 'Not specified')}
+- Age: {user_profile.get('age', 'Not specified')}
+- Income Range: {user_profile.get('income_range', 'Not specified')}
+- BPL Status: {'Yes' if user_profile.get('is_bpl') else 'No'}
+{f"- Medical Conditions: {', '.join(user_profile.get('conditions', []))}" if user_profile.get('conditions') else ""}
+
+{f"MEDICAL REPORT CONTEXT (from OCR):{chr(10)}{medical_context[:2000]}" if medical_context else ""}
+
+RETRIEVED GOVERNMENT HEALTH SCHEMES (knowledge base):
+{scheme_context}
+
+INSTRUCTIONS:
+1. Summarise in 2-3 sentences which schemes the user should consider and why.
+2. Rank the top schemes by relevance for this specific user.
+3. For each recommended scheme, explain WHY it is relevant to THIS user's profile / medical situation.
+4. Mention any required documents the user should prepare.
+5. If the medical report shows conditions (e.g. diabetes, kidney disease), explicitly link to schemes that cover those.
+6. Use simple, clear language suitable for non-expert users.
+7. ALWAYS include the scheme helpline number.
+
+Respond in JSON format:
+{{
+  "summary": "2-3 sentence overall recommendation",
+  "recommendations": [
+    {{
+      "scheme_id": "...",
+      "scheme_name": "...",
+      "why_relevant": "personalised explanation",
+      "action_steps": ["step 1", "step 2"],
+      "helpline": "..."
+    }}
+  ]
+}}"""
+
+        try:
+            response = bedrock_runtime.invoke_model(
+                modelId=settings.AWS_BEDROCK_MODEL_ID,
+                contentType="application/json",
+                accept="application/json",
+                body=json.dumps({
+                    "anthropic_version": "bedrock-2023-05-31",
+                    "max_tokens": 2048,
+                    "temperature": 0.3,
+                    "messages": [{"role": "user", "content": prompt}],
+                }),
+            )
+
+            body = json.loads(response["body"].read().decode("utf-8"))
+            text = body["content"][0]["text"]
+
+            # Parse JSON from Claude's response
+            rag_result = self._parse_json_response(text)
+
+            # Merge RAG recommendations back into scheme data
+            enriched = self._merge_rag_with_schemes(rag_result, retrieved)
+
+            return {
+                "schemes": enriched,
+                "summary": rag_result.get("summary", ""),
+                "count": len(enriched),
+                "rag_used": True,
+            }
+
+        except Exception as e:
+            logger.warning(f"Bedrock RAG generation failed, returning retrieval-only: {e}")
+            # Fallback to retrieval-only results
+            return {
+                "schemes": [
+                    self._scheme_to_response(s) for s in retrieved
+                ],
+                "summary": f"Found {len(retrieved)} potentially relevant schemes based on your profile.",
+                "count": len(retrieved),
+                "rag_used": False,
+            }
+
+    # ---- helpers ----
+
+    @staticmethod
+    def _extract_medical_keywords(text: str) -> str:
+        """Pull out medically relevant terms from OCR text for better retrieval."""
+        medical_terms = [
+            "diabetes", "hypertension", "blood pressure", "cholesterol",
+            "kidney", "renal", "creatinine", "dialysis",
+            "cardiac", "heart", "ecg", "echo",
+            "cancer", "tumour", "tumor", "malignant", "biopsy",
+            "anemia", "anaemia", "hemoglobin", "haemoglobin",
+            "thyroid", "tsh", "liver", "hepatitis",
+            "pregnancy", "pregnant", "antenatal", "maternal",
+            "tuberculosis", "tb", "cough",
+            "cataract", "eye", "vision", "blindness",
+            "depression", "anxiety", "mental", "psychiatric",
+            "stroke", "paralysis", "neurology",
+            "burn", "fracture", "trauma", "accident",
+            "hiv", "aids",
+            "malaria", "dengue",
+            "child", "paediatric", "neonatal", "infant",
+            "sugar", "glucose", "hba1c",
+            "urea", "bun", "protein",
+            "vitamin", "iron", "calcium",
+        ]
+        text_lower = text.lower()
+        found = [t for t in medical_terms if t in text_lower]
+        return " ".join(found)
+
+    @staticmethod
+    def _check_age_eligible(user_age: int, age_criteria: str) -> bool:
+        """Check if user's age satisfies scheme's age criteria."""
+        if not age_criteria or age_criteria.lower() in ("no restriction", "all ages", "no age limit", "no limit"):
+            return True
+
+        # Parse ranges like "18 to 70 years", "60 years and above", "Above 19 years"
+        criteria_lower = age_criteria.lower()
+
+        # "X to Y years" pattern
+        m = re.search(r"(\d+)\s*(?:to|-)\s*(\d+)", criteria_lower)
+        if m:
+            lo, hi = int(m.group(1)), int(m.group(2))
+            return lo <= user_age <= hi
+
+        # "above X" / "X years and above"
+        m = re.search(r"(?:above|over|>=?)\s*(\d+)", criteria_lower)
+        if m:
+            return user_age >= int(m.group(1))
+
+        # "below X" / "under X"  / "0 to X"
+        m = re.search(r"(?:below|under|<=?)\s*(\d+)", criteria_lower)
+        if m:
+            return user_age <= int(m.group(1))
+
+        return True  # default pass
+
+    @staticmethod
+    def _check_income_eligible(income_range: str, scheme: Dict) -> bool:
+        """Basic income-range eligibility check."""
+        if not income_range:
+            return True
+        income_criteria = scheme.get("income_criteria", "")
+        if not income_criteria or "none" in income_criteria.lower() or "universal" in income_criteria.lower():
+            return True
+
+        # Map user income ranges to approximate numeric values (rupees/year)
+        income_map = {
+            "below-1l": 80_000,
+            "1l-3l": 200_000,
+            "3l-5l": 400_000,
+            "above-5l": 700_000,
+        }
+        user_income = income_map.get(income_range, 200_000)
+
+        # Extract numeric cap from criteria, e.g. "below ₹1,00,000" or "up to ₹72,000"
+        m = re.search(r"[\₹rs\.]*\s*([\d,]+)", income_criteria.replace(",", ""))
+        if m:
+            cap_str = m.group(1).replace(",", "")
+            try:
+                cap = int(cap_str)
+                if cap > 0 and user_income > cap:
+                    return False
+            except ValueError:
+                pass
+
+        return True
+
+    @staticmethod
+    def _generate_match_reason(
+        scheme: Dict, state: str, income_range: str, age: int,
+        is_bpl: bool, conditions: Optional[List[str]], score: float,
+    ) -> str:
+        """Generate a human-readable reason why a scheme matched."""
+        reasons = []
+
+        if is_bpl:
+            reasons.append("BPL card holder")
+        if state and scheme.get("state") == state.lower().replace(" ", "_"):
+            reasons.append(f"available in {state}")
+        elif scheme.get("state") == "all_india":
+            reasons.append("national scheme available across India")
+        if age >= 60 and "elderly" in scheme.get("description", "").lower():
+            reasons.append("designed for senior citizens")
+        if conditions:
+            covered = set(c.lower() for c in scheme.get("conditions_covered", []))
+            matched = [c for c in conditions if c.lower() in covered]
+            if matched:
+                reasons.append(f"covers conditions: {', '.join(matched)}")
+        if income_range:
+            reasons.append(f"income range {income_range}")
+
+        if not reasons:
+            reasons.append(f"profile relevance score {score:.0%}")
+
+        return "; ".join(reasons).capitalize()
+
+    def _format_schemes_for_prompt(self, schemes: List[Dict]) -> str:
+        """Format retrieved schemes as text for the LLM prompt."""
+        parts = []
+        for i, s in enumerate(schemes, 1):
+            parts.append(
+                f"[{i}] {s['name']} (ID: {s['id']})\n"
+                f"   Type: {s.get('type','')}\n"
+                f"   Coverage: {s.get('coverage','')}\n"
+                f"   State: {s.get('state','all_india')}\n"
+                f"   Eligibility: {'; '.join(s.get('eligibility', []))}\n"
+                f"   Conditions Covered: {', '.join(s.get('conditions_covered', []))}\n"
+                f"   Documents Required: {', '.join(s.get('documents_required', []))}\n"
+                f"   Benefits: {'; '.join(s.get('benefits', []))}\n"
+                f"   Helpline: {s.get('helpline', 'N/A')}\n"
+                f"   Description: {s.get('description','')}\n"
+            )
+        return "\n".join(parts)
+
+    @staticmethod
+    def _parse_json_response(text: str) -> Dict:
+        """Robustly extract JSON from Claude's response."""
+        # Try direct parse
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+        # Try extracting ```json ... ```
+        m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(1))
+            except json.JSONDecodeError:
+                pass
+        # Try finding any { ... } block
+        m = re.search(r"\{.*\}", text, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(0))
+            except json.JSONDecodeError:
+                pass
+        return {"summary": text, "recommendations": []}
+
+    def _merge_rag_with_schemes(
+        self, rag_result: Dict, retrieved: List[Dict]
+    ) -> List[Dict]:
+        """Merge Claude's personalised recommendations back into scheme data."""
+        scheme_map = {s["id"]: s for s in retrieved}
+        recommendations = rag_result.get("recommendations", [])
+        enriched = []
+
+        for rec in recommendations:
+            sid = rec.get("scheme_id", "")
+            base = scheme_map.get(sid, {})
+            if not base:
+                # Try fuzzy match by name
+                for s in retrieved:
+                    if rec.get("scheme_name", "").lower() in s.get("name", "").lower():
+                        base = s
+                        break
+
+            if base:
+                enriched.append(self._scheme_to_response(
+                    base,
+                    match_reason=rec.get("why_relevant", base.get("match_reason", "")),
+                    action_steps=rec.get("action_steps"),
+                    helpline=rec.get("helpline", base.get("helpline")),
+                ))
+
+        # Add any retrieved schemes not mentioned by Claude
+        mentioned_ids = {e.get("id") for e in enriched}
+        for s in retrieved:
+            if s["id"] not in mentioned_ids:
+                enriched.append(self._scheme_to_response(s))
+
+        return enriched
+
+    @staticmethod
+    def _scheme_to_response(
+        scheme: Dict,
+        match_reason: str = "",
+        action_steps: Optional[List[str]] = None,
+        helpline: str = "",
+    ) -> Dict:
+        """Convert scheme dict to API response format."""
+        return {
+            "id": scheme["id"],
+            "name": scheme["name"],
+            "type": scheme.get("type", ""),
+            "coverage": scheme.get("coverage", ""),
+            "eligibility": scheme.get("eligibility", []),
+            "documents_required": scheme.get("documents_required", []),
+            "benefits": scheme.get("benefits", []),
+            "state": scheme.get("state", "all_india"),
+            "match_reason": match_reason or scheme.get("match_reason", ""),
+            "apply_link": scheme.get("apply_link"),
+            "helpline": helpline or scheme.get("helpline", ""),
+            "relevance_score": scheme.get("relevance_score", 0),
+            "action_steps": action_steps or [],
+            "conditions_covered": scheme.get("conditions_covered", []),
+        }
+
+
+# Global singleton
+scheme_rag_service = SchemeRAGService()

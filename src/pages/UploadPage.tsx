@@ -1,212 +1,449 @@
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload, FileText, Brain, MessageSquareText, Volume2, Landmark,
-  Copy, Download, Play, Pause, ChevronDown, Wifi, WifiOff, Loader2, CheckCircle2
+  Copy, Download, Play, Pause, RotateCcw, ChevronDown, ChevronUp,
+  Wifi, WifiOff, Loader2, CheckCircle2, AlertTriangle, Info,
+  ArrowUp, ArrowDown, Minus, Send, X, SkipBack, SkipForward,
+  Eye, Shield, Zap, Phone, Star, ExternalLink, Sparkles
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import DisclaimerBar from "@/components/DisclaimerBar";
 import GlassCard from "@/components/GlassCard";
 import WaveformVisualizer from "@/components/WaveformVisualizer";
 import { apiClient } from "@/lib/api";
-import { AnalysisResponse, DocumentStatus, DocumentUploadResponse, SchemeMatchResponse } from "@/lib/api";
+import type {
+  AnalysisResponse, DocumentStatus, DocumentUploadResponse,
+  SchemeMatchResponse, Language, FollowUpResponse, KeyFinding, AbnormalValue,
+  SourceGroundingItem
+} from "@/lib/api";
 
 type Step = "upload" | "processing" | "results";
 
-const UploadPage = () => {
-  const [step, setStep] = useState<Step>("upload");
-  const [lowBandwidth, setLowBandwidth] = useState(false);
-  const [playingLang, setPlayingLang] = useState<string | null>(null);
-  const [audioSpeed, setAudioSpeed] = useState<"1x" | "1.5x">("1x");
-  const [dragOver, setDragOver] = useState(false);
+// Language config
+const LANGUAGES: { code: Language; label: string; native: string }[] = [
+  { code: "en", label: "English", native: "English" },
+  { code: "hi", label: "Hindi", native: "हिन्दी" },
+  { code: "kn", label: "Kannada", native: "ಕನ್ನಡ" },
+];
 
-  // API related state
+const UploadPage = () => {
+  // Core state
+  const [step, setStep] = useState<Step>("upload");
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>("en");
+  const [lowBandwidth, setLowBandwidth] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Processing state
   const [uploadResponse, setUploadResponse] = useState<DocumentUploadResponse | null>(null);
   const [documentStatus, setDocumentStatus] = useState<DocumentStatus | null>(null);
+  const [progressMessage, setProgressMessage] = useState("");
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [dragOver, setDragOver] = useState(false);
+
+  // Analysis state
   const [analysisResult, setAnalysisResult] = useState<AnalysisResponse | null>(null);
-  const [schemeResult, setSchemeResult] = useState<SchemeMatchResponse | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  // Scheme matching state
+  // Audio state
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [audioProgress, setAudioProgress] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioSpeed, setAudioSpeed] = useState(1);
+  const [audioLanguage, setAudioLanguage] = useState<Language>("hi");
+
+  // Scheme state
+  const [schemeResult, setSchemeResult] = useState<SchemeMatchResponse | null>(null);
   const [schemeState, setSchemeState] = useState("Karnataka");
   const [schemeIncome, setSchemeIncome] = useState("below-1l");
   const [schemeAge, setSchemeAge] = useState("30");
   const [schemeBpl, setSchemeBpl] = useState(true);
   const [showSchemes, setShowSchemes] = useState(false);
+  const [schemeLoading, setSchemeLoading] = useState(false);
 
-  // Audio state
-  const [hindiAudioUrl, setHindiAudioUrl] = useState<string | null>(null);
-  const [kannadaAudioUrl, setKannadaAudioUrl] = useState<string | null>(null);
+  // Chat / follow-up state
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ role: "user" | "ai"; text: string }[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
-  // Handle document upload
+  // Panel visibility
+  const [showGrounding, setShowGrounding] = useState(false);
+  const [showFindings, setShowFindings] = useState(true);
+  const [showAbnormal, setShowAbnormal] = useState(true);
+  const [showNotes, setShowNotes] = useState(true);
+
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const pollRef = useRef<number | null>(null);
+
+  // ==================== Progress messages ====================
+  const PROGRESS_STEPS: { status: string; message: string; percent: number }[] = [
+    { status: "pending", message: "Upload received. Preparing to process...", percent: 10 },
+    { status: "uploading", message: "Uploading to secure storage...", percent: 20 },
+    { status: "preprocessing", message: "Enhancing image quality...", percent: 40 },
+    { status: "extracting", message: "Extracting text with OCR...", percent: 60 },
+    { status: "analyzing", message: "Generating AI analysis...", percent: 80 },
+    { status: "processing", message: "Processing your report...", percent: 70 },
+    { status: "completed", message: "Done!", percent: 100 },
+    { status: "failed", message: "Processing failed.", percent: 0 },
+  ];
+
+  // ==================== Handlers ====================
+
+  const resetAll = useCallback(() => {
+    setStep("upload");
+    setUploadResponse(null);
+    setDocumentStatus(null);
+    setAnalysisResult(null);
+    setSchemeResult(null);
+    setShowSchemes(false);
+    setShowChat(false);
+    setChatMessages([]);
+    setError(null);
+    setAudioUrl(null);
+    setIsPlaying(false);
+    setAudioProgress(0);
+    if (audioElement) {
+      audioElement.pause();
+      setAudioElement(null);
+    }
+    if (pollRef.current) clearInterval(pollRef.current);
+  }, [audioElement]);
+
   const handleUpload = async (file: File) => {
+    setError(null);
+
+    // Validate on client
+    const allowed = ["application/pdf", "image/jpeg", "image/png", "image/tiff"];
+    if (!allowed.includes(file.type)) {
+      setError("Invalid file type. Please upload a PDF, JPG, or PNG file.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File too large. Maximum size is 10MB.");
+      return;
+    }
+
     try {
       setStep("processing");
-      
+      setProgressMessage("Uploading your report...");
+      setProgressPercent(10);
+
       const response = await apiClient.uploadDocument(file);
       setUploadResponse(response);
-      
-      // Poll for processing status
-      const pollInterval = setInterval(async () => {
-        const status = await apiClient.getDocumentStatus(response.session_id);
-        setDocumentStatus(status);
-        
-        if (status.status === "completed") {
-          clearInterval(pollInterval);
-          setStep("results");
-          // Automatically analyze
-          await analyzeDocument(response.session_id, response.document_id);
-        } else if (status.status === "failed") {
-          clearInterval(pollInterval);
-          setStep("upload");
-          alert("Processing failed. Please try again.");
+
+      // Poll for status
+      pollRef.current = window.setInterval(async () => {
+        try {
+          const status = await apiClient.getDocumentStatus(response.session_id);
+          setDocumentStatus(status);
+
+          // Update progress
+          const stepInfo = PROGRESS_STEPS.find(s => s.status === status.status);
+          if (stepInfo) {
+            setProgressMessage(status.status_message || stepInfo.message);
+            setProgressPercent(stepInfo.percent);
+          }
+
+          if (status.status === "completed") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setStep("results");
+            await analyzeDocument(response.session_id, response.document_id);
+          } else if (status.status === "failed") {
+            if (pollRef.current) clearInterval(pollRef.current);
+            setError(status.status_message || "Processing failed. Please try again.");
+            setStep("upload");
+          }
+        } catch {
+          // Network error during polling — just retry
         }
-      }, 2000);
-      
-    } catch (error) {
-      console.error("Upload error:", error);
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || "Upload failed. Please try again.");
       setStep("upload");
-      alert("Upload failed. Please try again.");
     }
   };
 
-  // Handle drag and drop
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragOver(false);
-    
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      handleUpload(e.dataTransfer.files[0]);
-    }
+    if (e.dataTransfer.files?.length) handleUpload(e.dataTransfer.files[0]);
   };
 
-  // Handle file input
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      handleUpload(e.target.files[0]);
-    }
+    if (e.target.files?.length) handleUpload(e.target.files[0]);
   };
 
-  // Analyze document
   const analyzeDocument = async (sessionId: string, documentId: string) => {
     try {
       setIsAnalyzing(true);
-      
-      const analysis = await apiClient.analyzeDocument(sessionId, documentId, "en");
+      const analysis = await apiClient.analyzeDocument(sessionId, documentId, selectedLanguage);
       setAnalysisResult(analysis);
-      
-      // Generate audio
-      await generateAudio(analysis.explanation);
-      
-    } catch (error) {
-      console.error("Analysis error:", error);
+    } catch (err: any) {
+      setError(`Analysis failed: ${err.message}`);
     } finally {
       setIsAnalyzing(false);
     }
   };
 
-  // Generate audio
-  const generateAudio = async (text: string) => {
+  // ==================== Audio controls ====================
+
+  const loadAndPlayAudio = async (lang: Language) => {
+    if (!analysisResult) return;
+
+    // Stop current
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.removeEventListener("timeupdate", () => {});
+    }
+
+    setAudioLanguage(lang);
+
     try {
-      const hindiResponse = await apiClient.synthesizeSpeech(text, "hi");
-      const kannadaResponse = await apiClient.synthesizeSpeech(text, "kn");
-      
-      setHindiAudioUrl(hindiResponse.audio_url);
-      setKannadaAudioUrl(kannadaResponse.audio_url);
-    } catch (error) {
-      console.error("Audio synthesis error:", error);
+      const textToSpeak = analysisResult.summary || "No summary available.";
+      const response = await apiClient.synthesizeSpeech(textToSpeak, lang);
+      setAudioUrl(response.audio_url);
+
+      const audio = new Audio(response.audio_url);
+      audio.playbackRate = audioSpeed;
+
+      audio.addEventListener("timeupdate", () => {
+        setAudioProgress(audio.currentTime);
+        setAudioDuration(audio.duration || 0);
+      });
+      audio.addEventListener("ended", () => {
+        setIsPlaying(false);
+        setAudioProgress(0);
+      });
+      audio.addEventListener("error", () => {
+        setError("Audio playback failed. Please try again.");
+        setIsPlaying(false);
+      });
+
+      setAudioElement(audio);
+      audio.play();
+      setIsPlaying(true);
+    } catch (err: any) {
+      setError(`Audio synthesis failed: ${err.message}`);
     }
   };
 
-  // Find eligible schemes
+  const togglePlayPause = () => {
+    if (!audioElement) return;
+    if (isPlaying) {
+      audioElement.pause();
+      setIsPlaying(false);
+    } else {
+      audioElement.play();
+      setIsPlaying(true);
+    }
+  };
+
+  const replayAudio = () => {
+    if (!audioElement) return;
+    audioElement.currentTime = 0;
+    audioElement.play();
+    setIsPlaying(true);
+  };
+
+  const skipForward = () => {
+    if (!audioElement) return;
+    audioElement.currentTime = Math.min(audioElement.currentTime + 10, audioElement.duration);
+  };
+
+  const skipBackward = () => {
+    if (!audioElement) return;
+    audioElement.currentTime = Math.max(audioElement.currentTime - 10, 0);
+  };
+
+  const changeSpeed = (speed: number) => {
+    setAudioSpeed(speed);
+    if (audioElement) audioElement.playbackRate = speed;
+  };
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, "0")}`;
+  };
+
+  // ==================== Follow-up chat ====================
+
+  const sendFollowUp = async () => {
+    if (!chatInput.trim() || !uploadResponse) return;
+
+    const question = chatInput.trim();
+    setChatInput("");
+    setChatMessages(prev => [...prev, { role: "user", text: question }]);
+    setIsChatLoading(true);
+
+    try {
+      const response = await apiClient.askFollowUp(
+        uploadResponse.session_id,
+        question,
+        selectedLanguage
+      );
+      setChatMessages(prev => [...prev, { role: "ai", text: response.answer }]);
+    } catch (err: any) {
+      setChatMessages(prev => [
+        ...prev,
+        { role: "ai", text: "Sorry, I couldn't process your question. Please try again." },
+      ]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [chatMessages]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (audioElement) audioElement.pause();
+    };
+  }, [audioElement]);
+
+  // ==================== Scheme matching ====================
+
   const findEligibleSchemes = async () => {
     try {
+      setSchemeLoading(true);
       const response = await apiClient.matchSchemes(
         schemeState,
         schemeIncome,
         parseInt(schemeAge),
-        schemeBpl
+        schemeBpl,
+        undefined,
+        uploadResponse?.session_id,
+        selectedLanguage
       );
       setSchemeResult(response);
       setShowSchemes(true);
-    } catch (error) {
-      console.error("Scheme matching error:", error);
+    } catch (err: any) {
+      setError(`Scheme matching failed: ${err.message}`);
+    } finally {
+      setSchemeLoading(false);
     }
   };
 
-  // Play audio
-  const playAudio = async (lang: string) => {
-    if (playingLang === lang) {
-      setPlayingLang(null);
-      return;
-    }
+  // ==================== Status helpers ====================
 
-    setPlayingLang(lang);
-    
-    try {
-      let audioUrl = lang === "Hindi" ? hindiAudioUrl : kannadaAudioUrl;
-      
-      if (!audioUrl && analysisResult) {
-        const response = await apiClient.synthesizeSpeech(
-          analysisResult.explanation,
-          lang === "Hindi" ? "hi" : "kn"
-        );
-        
-        audioUrl = response.audio_url;
-        if (lang === "Hindi") {
-          setHindiAudioUrl(audioUrl);
-        } else {
-          setKannadaAudioUrl(audioUrl);
-        }
-      }
-
-      if (audioUrl) {
-        const audio = new Audio(audioUrl);
-        audio.playbackRate = audioSpeed === "1x" ? 1 : 1.5;
-        audio.play();
-        
-        audio.onended = () => {
-          setPlayingLang(null);
-        };
-      }
-    } catch (error) {
-      console.error("Audio playback error:", error);
-      setPlayingLang(null);
-    }
+  const getStatusColor = (status: string) => {
+    if (status === "high" || status === "low" || status === "critical") return "text-red-400";
+    return "text-green-400";
   };
+
+  const getSeverityBadge = (severity: string) => {
+    const colors: Record<string, string> = {
+      mild: "bg-yellow-500/20 text-yellow-300",
+      moderate: "bg-orange-500/20 text-orange-300",
+      severe: "bg-red-500/20 text-red-300",
+    };
+    return colors[severity] || colors.mild;
+  };
+
+  const getStatusIcon = (status: string) => {
+    if (status === "high") return <ArrowUp className="w-3.5 h-3.5" />;
+    if (status === "low") return <ArrowDown className="w-3.5 h-3.5" />;
+    if (status === "critical") return <AlertTriangle className="w-3.5 h-3.5" />;
+    return <Minus className="w-3.5 h-3.5" />;
+  };
+
+  // ==================== Render ====================
 
   return (
     <div className="min-h-screen relative">
       <div className="animated-gradient-bg" />
       <Navbar />
 
-      <main className="pt-20 pb-20 px-4">
-        <div className="container mx-auto max-w-3xl space-y-6">
+      <main className="pt-20 pb-24 px-4">
+        <div className="container mx-auto max-w-3xl space-y-5">
 
-          {/* Upload Section */}
+          {/* ===== Error Banner ===== */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="glass-card border-red-500/30 p-4 flex items-start gap-3"
+              >
+                <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-red-300 font-medium">Error</p>
+                  <p className="text-xs text-red-300/70">{error}</p>
+                </div>
+                <button onClick={() => setError(null)} className="text-red-400 hover:text-red-300">
+                  <X className="w-4 h-4" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ===== Low-Confidence Warning Banner ===== */}
+          <AnimatePresence>
+            {documentStatus?.quality && !documentStatus.quality.is_acceptable && step === "results" && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="glass-card border-yellow-500/30 p-4 flex items-start gap-3"
+              >
+                <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-yellow-300 font-medium">Low Quality Report Detected</p>
+                  <ul className="text-xs text-yellow-300/70 mt-1 space-y-0.5">
+                    {documentStatus.quality.issues.map((issue, i) => (
+                      <li key={i}>• {issue}</li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-yellow-300/50 mt-1">
+                    Results may be less accurate. Consider uploading a clearer image.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ===== Upload Section ===== */}
           <GlassCard className="mt-4">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-display font-bold text-xl text-foreground flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
                 Upload Your Medical Report
               </h2>
-              <button
-                onClick={() => setLowBandwidth(!lowBandwidth)}
-                className="glass-card flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                {lowBandwidth ? <WifiOff className="w-3.5 h-3.5" /> : <Wifi className="w-3.5 h-3.5" />}
-                {lowBandwidth ? "Low BW" : "Normal"}
-              </button>
+              <div className="flex items-center gap-2">
+                {/* Language Selector */}
+                <select
+                  value={selectedLanguage}
+                  onChange={(e) => setSelectedLanguage(e.target.value as Language)}
+                  className="glass-card bg-secondary px-3 py-1.5 text-xs text-foreground border-none outline-none rounded-xl"
+                  aria-label="Select language"
+                >
+                  {LANGUAGES.map(l => (
+                    <option key={l.code} value={l.code}>{l.native}</option>
+                  ))}
+                </select>
+                {/* Low bandwidth toggle */}
+                <button
+                  onClick={() => setLowBandwidth(!lowBandwidth)}
+                  className="glass-card flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Toggle low bandwidth mode"
+                >
+                  {lowBandwidth ? <WifiOff className="w-3.5 h-3.5" /> : <Wifi className="w-3.5 h-3.5" />}
+                  {lowBandwidth ? "Low BW" : "Normal"}
+                </button>
+              </div>
             </div>
 
             <AnimatePresence mode="wait">
               {step === "upload" && (
-                <motion.div
-                  key="upload"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                >
+                <motion.div key="upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                   <div
                     onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                     onDragLeave={() => setDragOver(false)}
@@ -217,19 +454,15 @@ const UploadPage = () => {
                   >
                     <input
                       type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
+                      accept=".pdf,.jpg,.jpeg,.png,.tiff"
                       onChange={handleFileInput}
                       className="hidden"
                       id="file-upload"
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-                      <p className="text-foreground font-medium mb-1">
-                        Drag & drop your report here
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        or click to browse · PDF, JPG, PNG
-                      </p>
+                      <p className="text-foreground font-medium mb-1">Drag & drop your report here</p>
+                      <p className="text-sm text-muted-foreground">or click to browse · PDF, JPG, PNG · Max 10MB</p>
                     </label>
                   </div>
                 </motion.div>
@@ -241,47 +474,36 @@ const UploadPage = () => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex flex-col items-center py-12 gap-4"
+                  className="flex flex-col items-center py-10 gap-3"
                 >
                   <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                  <p className="text-foreground font-medium">Processing your report…</p>
-                  <p className="text-xs text-muted-foreground">Extracting text with OCR</p>
-                  <div className="w-48 h-1.5 rounded-full bg-muted overflow-hidden">
+                  <p className="text-foreground font-medium">{progressMessage}</p>
+                  <div className="w-64 h-2 rounded-full bg-muted overflow-hidden">
                     <motion.div
                       className="h-full gradient-bg rounded-full"
                       initial={{ width: "0%" }}
-                      animate={{ width: "100%" }}
-                      transition={{ duration: 2.2, ease: "easeInOut" }}
+                      animate={{ width: `${progressPercent}%` }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground">{progressPercent}% complete</p>
                 </motion.div>
               )}
 
               {step === "results" && (
-                <motion.div
-                  key="results-upload"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
+                <motion.div key="results-upload" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
                   className="flex items-center gap-3 p-4 rounded-xl bg-accent/10"
                 >
                   <CheckCircle2 className="w-5 h-5 text-accent" />
-                  <div>
+                  <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">Report processed successfully</p>
                     <p className="text-xs text-muted-foreground">
-                      OCR Confidence: {documentStatus?.ocr_confidence?.toFixed(0) || 'Processing...'}%
+                      OCR Confidence: {documentStatus?.ocr_confidence?.toFixed(0) ?? "—"}%
+                      {documentStatus?.engine_used && ` · Engine: ${documentStatus.engine_used}`}
+                      {documentStatus?.fallback_used && " (fallback)"}
                     </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      setStep("upload");
-                      setUploadResponse(null);
-                      setDocumentStatus(null);
-                      setAnalysisResult(null);
-                      setSchemeResult(null);
-                      setShowSchemes(false);
-                    }}
-                    className="ml-auto text-xs text-primary hover:underline"
-                  >
+                  <button onClick={resetAll} className="text-xs text-primary hover:underline">
                     Upload another
                   </button>
                 </motion.div>
@@ -289,21 +511,36 @@ const UploadPage = () => {
             </AnimatePresence>
           </GlassCard>
 
-          {/* Results — only show after processing */}
+          {/* ===== Results ===== */}
           {step === "results" && (
             <>
-              {/* AI Explanation */}
+              {/* Central Listen/Explain Button */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex justify-center"
+              >
+                <button
+                  onClick={() => loadAndPlayAudio(selectedLanguage === "en" ? "hi" : selectedLanguage)}
+                  disabled={!analysisResult}
+                  className="btn-primary-gradient flex items-center gap-3 px-8 py-4 text-lg font-semibold disabled:opacity-50"
+                >
+                  <Volume2 className="w-6 h-6" />
+                  {isPlaying ? "Listening..." : "Listen / Explain"}
+                </button>
+              </motion.div>
+
+              {/* AI Summary */}
               <GlassCard delay={0.1}>
                 <h3 className="font-display font-bold text-lg mb-4 text-foreground flex items-center gap-2">
                   <Brain className="w-5 h-5 text-primary" />
-                  Simplified Explanation
+                  Medical Summary
                   {isAnalyzing && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
                 </h3>
+
                 {analysisResult ? (
                   <div className="space-y-3 text-sm leading-relaxed text-secondary-foreground">
-                    {analysisResult.explanation.split('\n\n').map((paragraph, i) => (
-                      <p key={i}>{paragraph}</p>
-                    ))}
+                    <p>{analysisResult.summary}</p>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center py-8">
@@ -314,55 +551,221 @@ const UploadPage = () => {
 
                 {/* Confidence Panel */}
                 {analysisResult && (
-                  <div className="mt-6 grid grid-cols-3 gap-3">
-                    {[
-                      { label: "AI Confidence", value: analysisResult.confidence },
-                      { label: "OCR Accuracy", value: Math.round(analysisResult.ocr_confidence) },
-                      { label: "Clarity", value: 72, text: "Medium" },
-                    ].map((m) => (
-                      <div key={m.label} className="text-center">
-                        <p className="text-xs text-muted-foreground mb-1.5">{m.label}</p>
-                        <div className="h-2 rounded-full bg-muted overflow-hidden">
-                          <motion.div
-                            className="h-full gradient-bg rounded-full"
-                            initial={{ width: 0 }}
-                            animate={{ width: `${m.value}%` }}
-                            transition={{ duration: 0.8, delay: 0.3 }}
-                          />
+                  <div className="mt-6 space-y-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {[
+                        { label: "AI Confidence", value: analysisResult.confidence },
+                        { label: "OCR Accuracy", value: Math.round(analysisResult.ocr_confidence) },
+                        { label: "Processing", value: 0, text: `${analysisResult.processing_time_ms}ms` },
+                      ].map((m) => (
+                        <div key={m.label} className="text-center">
+                          <p className="text-xs text-muted-foreground mb-1.5">{m.label}</p>
+                          {m.value > 0 ? (
+                            <>
+                              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                <motion.div
+                                  className={`h-full rounded-full ${m.value < 60 ? "bg-red-500" : m.value < 80 ? "bg-yellow-500" : "bg-accent"}`}
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${m.value}%` }}
+                                  transition={{ duration: 0.8, delay: 0.3 }}
+                                />
+                              </div>
+                              <p className="text-xs text-foreground mt-1 font-medium">{m.value}%</p>
+                            </>
+                          ) : (
+                            <p className="text-xs text-foreground font-medium">{m.text}</p>
+                          )}
                         </div>
-                        <p className="text-xs text-foreground mt-1 font-medium">
-                          {m.text || `${m.value}%`}
-                        </p>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                    {analysisResult.confidence_notes && (
+                      <p className="text-xs text-muted-foreground italic flex items-start gap-1.5">
+                        <Shield className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+                        {analysisResult.confidence_notes}
+                      </p>
+                    )}
                   </div>
                 )}
               </GlassCard>
 
-              {/* Questions for Doctor */}
-              {analysisResult && (
+              {/* Key Findings */}
+              {analysisResult && analysisResult.key_findings.length > 0 && (
+                <GlassCard delay={0.15}>
+                  <button
+                    onClick={() => setShowFindings(!showFindings)}
+                    className="w-full flex items-center justify-between"
+                  >
+                    <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
+                      <Zap className="w-5 h-5 text-primary" />
+                      Key Findings
+                      <span className="text-xs font-normal text-muted-foreground ml-1">
+                        ({analysisResult.key_findings.length})
+                      </span>
+                    </h3>
+                    {showFindings ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+
+                  <AnimatePresence>
+                    {showFindings && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-4 space-y-3">
+                          {analysisResult.key_findings.map((finding: KeyFinding, i: number) => (
+                            <div key={i} className="glass-card p-3 flex items-start gap-3">
+                              <div className={`mt-0.5 ${getStatusColor(finding.status)}`}>
+                                {getStatusIcon(finding.status)}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between flex-wrap gap-1">
+                                  <span className="text-sm font-medium text-foreground">{finding.test_name}</span>
+                                  <span className={`text-xs font-mono ${getStatusColor(finding.status)}`}>
+                                    {finding.value}
+                                  </span>
+                                </div>
+                                {finding.normal_range && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    Normal: {finding.normal_range}
+                                  </p>
+                                )}
+                                {finding.explanation && (
+                                  <p className="text-xs text-secondary-foreground mt-1">{finding.explanation}</p>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </GlassCard>
+              )}
+
+              {/* Abnormal Values */}
+              {analysisResult && analysisResult.abnormal_values.length > 0 && (
                 <GlassCard delay={0.2}>
+                  <button
+                    onClick={() => setShowAbnormal(!showAbnormal)}
+                    className="w-full flex items-center justify-between"
+                  >
+                    <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5 text-yellow-400" />
+                      Abnormal Values
+                      <span className="text-xs font-normal text-yellow-400/70 ml-1">
+                        ({analysisResult.abnormal_values.length} flagged)
+                      </span>
+                    </h3>
+                    {showAbnormal ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+
+                  <AnimatePresence>
+                    {showAbnormal && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-4 space-y-3">
+                          {analysisResult.abnormal_values.map((av: AbnormalValue, i: number) => (
+                            <div key={i} className="glass-card p-3 border-yellow-500/20">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium text-foreground">{av.test_name}</span>
+                                <span className={`text-xs px-2 py-0.5 rounded-full ${getSeverityBadge(av.severity)}`}>
+                                  {av.severity}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                <span>Value: <span className="text-red-400 font-mono">{av.value}</span></span>
+                                <span>Normal: {av.normal_range}</span>
+                              </div>
+                              {av.explanation && (
+                                <p className="text-xs text-secondary-foreground mt-1.5">{av.explanation}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </GlassCard>
+              )}
+
+              {/* Things to Note */}
+              {analysisResult && analysisResult.things_to_note.length > 0 && (
+                <GlassCard delay={0.25}>
+                  <button
+                    onClick={() => setShowNotes(!showNotes)}
+                    className="w-full flex items-center justify-between"
+                  >
+                    <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
+                      <Info className="w-5 h-5 text-blue-400" />
+                      Things to Note
+                    </h3>
+                    {showNotes ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
+
+                  <AnimatePresence>
+                    {showNotes && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <ul className="mt-4 space-y-2">
+                          {analysisResult.things_to_note.map((note, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-secondary-foreground">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 mt-2 flex-shrink-0" />
+                              {note}
+                            </li>
+                          ))}
+                        </ul>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </GlassCard>
+              )}
+
+              {/* Questions for Doctor */}
+              {analysisResult && analysisResult.questions_for_doctor.length > 0 && (
+                <GlassCard delay={0.3}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
                       <MessageSquareText className="w-5 h-5 text-primary" />
                       Questions for Your Doctor
                     </h3>
                     <div className="flex gap-2">
-                      <button 
-                        onClick={() => {
-                          navigator.clipboard.writeText(analysisResult.questions.join('\n'));
-                        }}
+                      <button
+                        onClick={() => navigator.clipboard.writeText(analysisResult.questions_for_doctor.join("\n"))}
                         className="glass-card p-2 hover:text-foreground text-muted-foreground transition-colors"
+                        title="Copy questions"
                       >
                         <Copy className="w-4 h-4" />
                       </button>
-                      <button className="glass-card p-2 hover:text-foreground text-muted-foreground transition-colors">
+                      <button
+                        className="glass-card p-2 hover:text-foreground text-muted-foreground transition-colors"
+                        title="Download questions"
+                        onClick={() => {
+                          const text = analysisResult.questions_for_doctor.map((q, i) => `${i + 1}. ${q}`).join("\n");
+                          const blob = new Blob([text], { type: "text/plain" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "doctor-questions.txt";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
                         <Download className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
                   <ol className="space-y-3 text-sm text-secondary-foreground">
-                    {analysisResult.questions.map((q, i) => (
+                    {analysisResult.questions_for_doctor.map((q, i) => (
                       <motion.li
                         key={i}
                         initial={{ opacity: 0, x: -10 }}
@@ -378,86 +781,193 @@ const UploadPage = () => {
                 </GlassCard>
               )}
 
-              {/* Audio Output */}
-              {analysisResult && (
-              <GlassCard delay={0.3}>
-                <h3 className="font-display font-bold text-lg mb-5 text-foreground flex items-center gap-2">
-                  <Volume2 className="w-5 h-5 text-primary" />
-                  Listen in Your Language
-                </h3>
+              {/* Source Grounding Panel */}
+              {analysisResult && analysisResult.source_grounding.length > 0 && (
+                <GlassCard delay={0.35}>
+                  <button
+                    onClick={() => setShowGrounding(!showGrounding)}
+                    className="w-full flex items-center justify-between"
+                  >
+                    <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
+                      <Eye className="w-5 h-5 text-primary" />
+                      Source Grounding
+                      <span className="text-xs font-normal text-muted-foreground ml-1">
+                        (extracted values & ranges)
+                      </span>
+                    </h3>
+                    {showGrounding ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </button>
 
-                <div className="flex flex-col sm:flex-row gap-4">
-                  {["Hindi", "Kannada"].map((lang) => {
-                    const isPlaying = playingLang === lang;
-                    return (
+                  <AnimatePresence>
+                    {showGrounding && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-4 overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-muted-foreground border-b border-border/50">
+                                <th className="text-left py-2 pr-3">Test</th>
+                                <th className="text-left py-2 pr-3">Extracted Value</th>
+                                <th className="text-left py-2 pr-3">Reference Range</th>
+                                <th className="text-left py-2">Status</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analysisResult.source_grounding.map((item: SourceGroundingItem, i: number) => (
+                                <tr key={i} className="border-b border-border/20">
+                                  <td className="py-2 pr-3 text-foreground capitalize">{item.test_name}</td>
+                                  <td className="py-2 pr-3 font-mono text-foreground">{item.extracted_value}</td>
+                                  <td className="py-2 pr-3 text-muted-foreground">{item.reference_range}</td>
+                                  <td className={`py-2 capitalize ${getStatusColor(item.status)}`}>
+                                    <span className="flex items-center gap-1">
+                                      {getStatusIcon(item.status)}
+                                      {item.status}
+                                    </span>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </GlassCard>
+              )}
+
+              {/* Audio Playback Controls */}
+              {analysisResult && (
+                <GlassCard delay={0.4}>
+                  <h3 className="font-display font-bold text-lg mb-5 text-foreground flex items-center gap-2">
+                    <Volume2 className="w-5 h-5 text-primary" />
+                    Listen in Your Language
+                  </h3>
+
+                  {/* Language audio buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                    {LANGUAGES.filter(l => l.code !== "en").map((lang) => (
                       <button
-                        key={lang}
-                        onClick={() => playAudio(lang)}
-                        className="flex-1 glass-card flex items-center gap-4 p-4 hover:border-primary/30 transition-all group"
+                        key={lang.code}
+                        onClick={() => loadAndPlayAudio(lang.code)}
+                        className={`flex-1 glass-card flex items-center gap-4 p-4 transition-all ${
+                          audioLanguage === lang.code && isPlaying
+                            ? "border-primary/40"
+                            : "hover:border-primary/30"
+                        }`}
                       >
                         <div className="w-12 h-12 rounded-xl gradient-bg flex items-center justify-center flex-shrink-0">
-                          {isPlaying ? (
+                          {audioLanguage === lang.code && isPlaying ? (
                             <Pause className="w-5 h-5 text-primary-foreground" />
                           ) : (
                             <Play className="w-5 h-5 text-primary-foreground ml-0.5" />
                           )}
                         </div>
                         <div className="flex-1 text-left">
-                          <p className="text-sm font-medium text-foreground">Play in {lang}</p>
-                          <WaveformVisualizer playing={isPlaying} />
+                          <p className="text-sm font-medium text-foreground">Play in {lang.native}</p>
+                          <WaveformVisualizer playing={audioLanguage === lang.code && isPlaying} />
                         </div>
                       </button>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
 
-                <div className="flex items-center gap-2 mt-4">
-                  <span className="text-xs text-muted-foreground">Speed:</span>
-                  {(["1x", "1.5x"] as const).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => setAudioSpeed(s)}
-                      className={`text-xs px-3 py-1 rounded-full transition-colors ${
-                        audioSpeed === s
-                          ? "gradient-bg text-primary-foreground font-medium"
-                          : "glass-card text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </GlassCard>
+                  {/* Player controls */}
+                  {audioElement && (
+                    <div className="space-y-3">
+                      {/* Progress bar */}
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground w-10">{formatTime(audioProgress)}</span>
+                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden cursor-pointer"
+                          onClick={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const pct = (e.clientX - rect.left) / rect.width;
+                            if (audioElement) audioElement.currentTime = pct * (audioElement.duration || 0);
+                          }}
+                        >
+                          <div
+                            className="h-full gradient-bg rounded-full transition-all"
+                            style={{ width: `${audioDuration ? (audioProgress / audioDuration) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-10 text-right">{formatTime(audioDuration)}</span>
+                      </div>
+
+                      {/* Transport controls */}
+                      <div className="flex items-center justify-center gap-3">
+                        <button onClick={skipBackward} className="glass-card p-2 text-muted-foreground hover:text-foreground transition-colors" title="Back 10s">
+                          <SkipBack className="w-4 h-4" />
+                        </button>
+                        <button onClick={togglePlayPause} className="w-12 h-12 rounded-full gradient-bg flex items-center justify-center">
+                          {isPlaying ? <Pause className="w-5 h-5 text-primary-foreground" /> : <Play className="w-5 h-5 text-primary-foreground ml-0.5" />}
+                        </button>
+                        <button onClick={skipForward} className="glass-card p-2 text-muted-foreground hover:text-foreground transition-colors" title="Forward 10s">
+                          <SkipForward className="w-4 h-4" />
+                        </button>
+                        <button onClick={replayAudio} className="glass-card p-2 text-muted-foreground hover:text-foreground transition-colors" title="Replay">
+                          <RotateCcw className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Speed controls */}
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-xs text-muted-foreground">Speed:</span>
+                        {[0.75, 1, 1.25, 1.5, 2].map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => changeSpeed(s)}
+                            className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                              audioSpeed === s
+                                ? "gradient-bg text-primary-foreground font-medium"
+                                : "glass-card text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {s}x
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </GlassCard>
               )}
 
               {/* Scheme Matching */}
-              <GlassCard delay={0.4}>
+              <GlassCard delay={0.45}>
                 <h3 className="font-display font-bold text-lg mb-5 text-foreground flex items-center gap-2">
                   <Landmark className="w-5 h-5 text-primary" />
                   Government Scheme Matching
+                  {schemeResult?.rag_used && (
+                    <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" /> AI-Powered
+                    </span>
+                  )}
                 </h3>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block">State</label>
-                    <select
-                      value={schemeState}
-                      onChange={(e) => setSchemeState(e.target.value)}
-                      className="w-full glass-card bg-secondary p-3 rounded-xl text-sm text-foreground border-none outline-none"
-                    >
+                    <select value={schemeState} onChange={(e) => setSchemeState(e.target.value)}
+                      className="w-full glass-card bg-secondary p-3 rounded-xl text-sm text-foreground border-none outline-none">
                       <option>Karnataka</option>
                       <option>Maharashtra</option>
                       <option>Tamil Nadu</option>
                       <option>Uttar Pradesh</option>
+                      <option>Kerala</option>
+                      <option>Andhra Pradesh</option>
+                      <option>Telangana</option>
+                      <option>West Bengal</option>
+                      <option>Rajasthan</option>
+                      <option>Gujarat</option>
+                      <option>Odisha</option>
+                      <option>Madhya Pradesh</option>
                     </select>
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block">Income Range</label>
-                    <select
-                      value={schemeIncome}
-                      onChange={(e) => setSchemeIncome(e.target.value)}
-                      className="w-full glass-card bg-secondary p-3 rounded-xl text-sm text-foreground border-none outline-none"
-                    >
+                    <select value={schemeIncome} onChange={(e) => setSchemeIncome(e.target.value)}
+                      className="w-full glass-card bg-secondary p-3 rounded-xl text-sm text-foreground border-none outline-none">
                       <option value="below-1l">Below ₹1,00,000</option>
                       <option value="1l-3l">₹1,00,000 – ₹3,00,000</option>
                       <option value="3l-5l">₹3,00,000 – ₹5,00,000</option>
@@ -466,21 +976,14 @@ const UploadPage = () => {
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1.5 block">Age</label>
-                    <input
-                      type="number"
-                      value={schemeAge}
-                      onChange={(e) => setSchemeAge(e.target.value)}
-                      className="w-full glass-card bg-secondary p-3 rounded-xl text-sm text-foreground border-none outline-none"
-                      placeholder="Enter age"
-                    />
+                    <input type="number" value={schemeAge} onChange={(e) => setSchemeAge(e.target.value)}
+                      className="w-full glass-card bg-secondary p-3 rounded-xl text-sm text-foreground border-none outline-none" placeholder="Enter age" />
                   </div>
                   <div className="flex items-end">
                     <button
                       onClick={() => setSchemeBpl(!schemeBpl)}
                       className={`w-full p-3 rounded-xl text-sm font-medium transition-colors ${
-                        schemeBpl
-                          ? "gradient-bg text-primary-foreground"
-                          : "glass-card text-muted-foreground"
+                        schemeBpl ? "gradient-bg text-primary-foreground" : "glass-card text-muted-foreground"
                       }`}
                     >
                       {schemeBpl ? "BPL Card Holder ✓" : "APL (No BPL Card)"}
@@ -488,42 +991,203 @@ const UploadPage = () => {
                   </div>
                 </div>
 
-                <button
-                  onClick={findEligibleSchemes}
-                  className="btn-primary-gradient w-full py-3 text-sm font-semibold"
-                >
-                  Find Eligible Schemes
+                <button onClick={findEligibleSchemes} disabled={schemeLoading}
+                  className="btn-primary-gradient w-full py-3 text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60">
+                  {schemeLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Finding schemes with AI...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Find Eligible Schemes
+                    </>
+                  )}
                 </button>
 
                 <AnimatePresence>
-                  {showSchemes && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-5 space-y-4 overflow-hidden"
-                    >
-                      {schemeResult?.schemes.map((scheme, i) => (
-                        <motion.div
-                          key={scheme.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: i * 0.1 }}
-                          className="glass-card p-4 space-y-2"
-                        >
-                          <h4 className="font-display font-semibold text-foreground">{scheme.name}</h4>
-                          <p className="text-xs text-accent"><span className="font-medium">Eligible because:</span> {scheme.match_reason}</p>
-                          <p className="text-xs text-muted-foreground"><span className="font-medium text-secondary-foreground">Documents needed:</span> {scheme.documents_required.join(', ')}</p>
-                          <a
-                            href={scheme.apply_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-block text-xs text-primary hover:underline mt-1"
-                          >
-                            Apply Now →
-                          </a>
+                  {showSchemes && schemeResult && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-5 space-y-4 overflow-hidden">
+
+                      {/* RAG Summary Banner */}
+                      {schemeResult.summary && (
+                        <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }}
+                          className="p-4 rounded-xl bg-primary/10 border border-primary/20">
+                          <div className="flex items-start gap-2">
+                            <Brain className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-primary mb-1">AI Recommendation Summary</p>
+                              <p className="text-sm text-foreground/90 leading-relaxed">{schemeResult.summary}</p>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+
+                      <p className="text-xs text-muted-foreground">
+                        {schemeResult.count} scheme{schemeResult.count !== 1 ? "s" : ""} found
+                      </p>
+
+                      {schemeResult.schemes.map((scheme, i) => (
+                        <motion.div key={scheme.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08 }}
+                          className="glass-card p-4 space-y-3 relative">
+
+                          {/* Header */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <h4 className="font-display font-semibold text-foreground">{scheme.name}</h4>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{scheme.type}</span>
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">{scheme.state === "all_india" ? "All India" : scheme.state}</span>
+                              </div>
+                            </div>
+                            {scheme.relevance_score > 0 && (
+                              <div className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 shrink-0">
+                                <Star className="w-3 h-3 fill-amber-400" />
+                                {Math.round(scheme.relevance_score * 100)}%
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Why relevant (RAG-generated) */}
+                          {scheme.match_reason && (
+                            <p className="text-xs text-accent">
+                              <span className="font-medium">Why this applies to you:</span> {scheme.match_reason}
+                            </p>
+                          )}
+
+                          {/* Coverage */}
+                          <p className="text-xs text-muted-foreground">
+                            <span className="font-medium text-secondary-foreground">Coverage:</span> {scheme.coverage}
+                          </p>
+
+                          {/* Conditions covered */}
+                          {scheme.conditions_covered && scheme.conditions_covered.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              {scheme.conditions_covered.slice(0, 6).map((cond, ci) => (
+                                <span key={ci} className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400">
+                                  {cond}
+                                </span>
+                              ))}
+                              {scheme.conditions_covered.length > 6 && (
+                                <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-400">
+                                  +{scheme.conditions_covered.length - 6} more
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Action steps (RAG-generated) */}
+                          {scheme.action_steps && scheme.action_steps.length > 0 && (
+                            <div className="space-y-1">
+                              <p className="text-xs font-medium text-secondary-foreground flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-primary" /> Next Steps
+                              </p>
+                              <ol className="list-decimal list-inside space-y-0.5">
+                                {scheme.action_steps.map((step, si) => (
+                                  <li key={si} className="text-xs text-muted-foreground">{step}</li>
+                                ))}
+                              </ol>
+                            </div>
+                          )}
+
+                          {/* Documents needed */}
+                          <p className="text-xs text-muted-foreground">
+                            <span className="font-medium text-secondary-foreground">Documents needed:</span>{" "}
+                            {scheme.documents_required.join(", ")}
+                          </p>
+
+                          {/* Footer: Links & Helpline */}
+                          <div className="flex flex-wrap items-center gap-3 pt-1 border-t border-border/40">
+                            {scheme.apply_link && (
+                              <a href={scheme.apply_link} target="_blank" rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                                <ExternalLink className="w-3 h-3" /> Apply Now
+                              </a>
+                            )}
+                            {scheme.helpline && (
+                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                                <Phone className="w-3 h-3" /> {scheme.helpline}
+                              </span>
+                            )}
+                          </div>
                         </motion.div>
                       ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </GlassCard>
+
+              {/* Follow-up Chat */}
+              <GlassCard delay={0.5}>
+                <button
+                  onClick={() => setShowChat(!showChat)}
+                  className="w-full flex items-center justify-between"
+                >
+                  <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
+                    <MessageSquareText className="w-5 h-5 text-primary" />
+                    Ask a Follow-up Question
+                  </h3>
+                  {showChat ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                </button>
+
+                <AnimatePresence>
+                  {showChat && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 space-y-3">
+                        {/* Chat messages */}
+                        <div className="max-h-64 overflow-y-auto space-y-2 pr-1">
+                          {chatMessages.length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-4">
+                              Ask any question about your medical report. The AI will answer based on your uploaded document.
+                            </p>
+                          )}
+                          {chatMessages.map((msg, i) => (
+                            <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                              <div className={`max-w-[80%] rounded-2xl px-3 py-2 text-sm ${
+                                msg.role === "user"
+                                  ? "gradient-bg text-primary-foreground"
+                                  : "glass-card text-secondary-foreground"
+                              }`}>
+                                {msg.text}
+                              </div>
+                            </div>
+                          ))}
+                          {isChatLoading && (
+                            <div className="flex justify-start">
+                              <div className="glass-card px-3 py-2 flex items-center gap-2">
+                                <Loader2 className="w-3 h-3 animate-spin text-primary" />
+                                <span className="text-xs text-muted-foreground">Thinking...</span>
+                              </div>
+                            </div>
+                          )}
+                          <div ref={chatEndRef} />
+                        </div>
+
+                        {/* Chat input */}
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && sendFollowUp()}
+                            placeholder="Ask about your report..."
+                            className="flex-1 glass-card bg-secondary px-4 py-2.5 rounded-xl text-sm text-foreground border-none outline-none"
+                          />
+                          <button
+                            onClick={sendFollowUp}
+                            disabled={!chatInput.trim() || isChatLoading}
+                            className="btn-primary-gradient px-4 py-2.5 disabled:opacity-50"
+                          >
+                            <Send className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>

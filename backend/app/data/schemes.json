@@ -1,0 +1,1035 @@
+[
+  {
+    "id": "scheme_001",
+    "name": "Ayushman Bharat Pradhan Mantri Jan Arogya Yojana (AB PM-JAY)",
+    "type": "health_insurance",
+    "level": "central",
+    "coverage": "Up to ₹5,00,000 per family per year for secondary and tertiary hospitalization",
+    "eligibility": [
+      "Deprived rural families and identified occupational categories of urban workers as per SECC 2011 data",
+      "Families already covered under Rashtriya Swasthya Bima Yojana (RSBY)",
+      "No restriction on family size, age, or gender",
+      "No cap on pre-existing conditions from day one"
+    ],
+    "income_criteria": "Based on SECC 2011 deprivation categories, not pure income",
+    "age_criteria": "No age limit",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Ration Card or SECC 2011 listed family ID",
+      "Any government-issued photo ID"
+    ],
+    "benefits": [
+      "Cashless and paperless treatment at empaneled public and private hospitals",
+      "Covers 3 days of pre-hospitalization and 15 days of post-hospitalization expenses",
+      "Transport allowance per hospitalization",
+      "Over 1,950 medical and surgical packages covering surgery, day-care treatments, ICU charges, diagnostics",
+      "No cap on pre-existing diseases"
+    ],
+    "conditions_covered": [
+      "cancer", "cardiac surgery", "knee replacement", "bypass surgery",
+      "dialysis", "organ transplant", "neurosurgery", "burns",
+      "diabetes complications", "hypertension complications", "stroke"
+    ],
+    "state": "all_india",
+    "apply_link": "https://pmjay.gov.in",
+    "helpline": "14555",
+    "description": "India's flagship public health insurance scheme that provides free health coverage of ₹5 lakh per family per year at any empaneled hospital across India. It is the world's largest government-funded healthcare programme. Beneficiaries are identified based on SECC 2011 deprivation and occupational criteria."
+  },
+  {
+    "id": "scheme_002",
+    "name": "Vajpayee Arogyashree Scheme",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "Up to ₹1,50,000 per family per year for BPL families; tertiary care",
+    "eligibility": [
+      "Below Poverty Line (BPL) card holders in Karnataka",
+      "Must possess a Karnataka state BPL card issued by the government"
+    ],
+    "income_criteria": "BPL families only",
+    "age_criteria": "No age limit",
+    "bpl_required": true,
+    "documents_required": [
+      "BPL Card issued by Karnataka Government",
+      "Aadhaar Card",
+      "State domicile certificate or voter ID"
+    ],
+    "benefits": [
+      "Cashless treatment at empaneled hospitals for over 800 types of surgeries and therapies",
+      "Covers critical illnesses: cardiac, cancer, neurosurgery, renal, burns, polytrauma",
+      "Follow-up treatment for 1 year after surgery"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "neurosurgery", "renal failure",
+      "burns", "polytrauma", "neonatal diseases", "cochlear implant"
+    ],
+    "state": "karnataka",
+    "apply_link": "https://arogya.karnataka.gov.in",
+    "helpline": "104",
+    "description": "Karnataka's state-funded health insurance scheme for BPL families providing cashless tertiary-care treatment, including critical illnesses."
+  },
+  {
+    "id": "scheme_003",
+    "name": "Mahatma Jyotirao Phule Jan Arogya Yojana (MJPJAY)",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "Up to ₹1,50,000 per family per year (extended to ₹2,50,000 for kidney transplant)",
+    "eligibility": [
+      "Yellow and orange ration card holders in Maharashtra",
+      "Families identified as Antyodaya Anna Yojana (AAY) and Priority Household (PHH)",
+      "Annual income below ₹1,00,000"
+    ],
+    "income_criteria": "Annual family income below ₹1,00,000",
+    "age_criteria": "No limit",
+    "bpl_required": true,
+    "documents_required": [
+      "Yellow/Saffron (Orange) Ration Card",
+      "Aadhaar Card",
+      "Income Certificate"
+    ],
+    "benefits": [
+      "Cashless treatment at empaneled hospitals for 1,134 types of procedures",
+      "Coverage of kidney transplant up to ₹2,50,000",
+      "Includes coverage for diagnostics and follow-up consultations for 10 days"
+    ],
+    "conditions_covered": [
+      "cancer", "cardiac surgery", "kidney transplant", "neurosurgery",
+      "burns", "polytrauma", "joint replacement", "dialysis"
+    ],
+    "state": "maharashtra",
+    "apply_link": "https://www.jeevandayee.gov.in",
+    "helpline": "155388",
+    "description": "Maharashtra's government health insurance scheme providing cashless hospitalization for BPL families with coverage for over 1,100 procedures."
+  },
+  {
+    "id": "scheme_004",
+    "name": "Chief Minister's Comprehensive Health Insurance Scheme (CMCHIS)",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "Up to ₹5,00,000 per family per year",
+    "eligibility": [
+      "Families with annual income not exceeding ₹72,000 (government servants and pensioners also eligible)",
+      "Must possess a Tamil Nadu state-issued health card"
+    ],
+    "income_criteria": "Annual family income up to ₹72,000",
+    "age_criteria": "No age restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Income Certificate",
+      "Ration Card",
+      "TN Health Card from any PHC / government hospital"
+    ],
+    "benefits": [
+      "Cashless treatment at empaneled government and private hospitals",
+      "Covers over 1,027 defined procedures and follow-up care",
+      "Coverage for organ transplant, cardiac surgery, cancer treatment, ICU care"
+    ],
+    "conditions_covered": [
+      "cancer", "cardiac surgery", "organ transplant", "renal failure",
+      "neurosurgery", "joint replacement", "diabetes complications"
+    ],
+    "state": "tamil_nadu",
+    "apply_link": "https://www.cmchistn.com",
+    "helpline": "104",
+    "description": "Tamil Nadu's universal health insurance scheme offering ₹5 lakh coverage for hospital procedures to families earning below ₹72,000 per year."
+  },
+  {
+    "id": "scheme_005",
+    "name": "Janani Suraksha Yojana (JSY)",
+    "type": "maternal_health",
+    "level": "central",
+    "coverage": "Cash incentive: ₹1,400 (rural), ₹1,000 (urban) for institutional delivery",
+    "eligibility": [
+      "Pregnant women aged 19+ years",
+      "BPL families / SC / ST women",
+      "All pregnant women in Low Performing States (LPS) regardless of income"
+    ],
+    "income_criteria": "BPL or SC/ST families in High Performing States; all women in Low Performing States",
+    "age_criteria": "Above 19 years",
+    "bpl_required": false,
+    "documents_required": [
+      "BPL Card or Caste Certificate",
+      "Aadhaar Card",
+      "Bank Account (Jan Dhan Yojana preferred)",
+      "MCP (Mother and Child Protection) Card"
+    ],
+    "benefits": [
+      "Cash assistance to offset cost of institutional delivery",
+      "Free delivery at government health facilities",
+      "ASHA workers provide escort and support during delivery"
+    ],
+    "conditions_covered": [
+      "pregnancy", "delivery", "maternal health", "institutional delivery"
+    ],
+    "state": "all_india",
+    "apply_link": "https://nhm.gov.in/index1.php?lang=1&level=3&sublinkid=841&lid=309",
+    "helpline": "104",
+    "description": "National scheme to reduce maternal and infant mortality by incentivizing institutional delivery through cash transfers to pregnant BPL women."
+  },
+  {
+    "id": "scheme_006",
+    "name": "Pradhan Mantri Surakshit Matritva Abhiyan (PMSMA)",
+    "type": "maternal_health",
+    "level": "central",
+    "coverage": "Free comprehensive antenatal checkup on the 9th of every month",
+    "eligibility": [
+      "All pregnant women visiting public health facilities",
+      "Priority given to high-risk pregnancies"
+    ],
+    "income_criteria": "None – universal for pregnant women",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Mother and Child Protection (MCP) Card",
+      "Any hospital / ANM registration slip"
+    ],
+    "benefits": [
+      "Free comprehensive antenatal checkup including blood pressure, blood sugar, urine, haemoglobin, ultrasound",
+      "Identification and management of high-risk pregnancies",
+      "Specialist obstetrician consultation"
+    ],
+    "conditions_covered": [
+      "pregnancy", "antenatal", "high-risk pregnancy", "gestational diabetes",
+      "preeclampsia", "anemia during pregnancy"
+    ],
+    "state": "all_india",
+    "apply_link": "https://pmsma.nhp.gov.in",
+    "helpline": "104",
+    "description": "National free antenatal care programme held on the 9th of every month at government facilities, providing comprehensive checkups to all pregnant women."
+  },
+  {
+    "id": "scheme_007",
+    "name": "Pradhan Mantri Suraksha Bima Yojana (PMSBY)",
+    "type": "accident_insurance",
+    "level": "central",
+    "coverage": "₹2,00,000 for accidental death or full disability; ₹1,00,000 for partial disability",
+    "eligibility": [
+      "Any Indian citizen aged 18–70 years",
+      "Must have a savings bank account",
+      "Auto-debit of ₹20/year as premium"
+    ],
+    "income_criteria": "None – premium is ₹20/year",
+    "age_criteria": "18 to 70 years",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Bank Account (savings)",
+      "One-page auto-debit consent form"
+    ],
+    "benefits": [
+      "₹2 lakh cover for accidental death or permanent total disability",
+      "₹1 lakh cover for permanent partial disability",
+      "Annual premium of just ₹20 auto-debited from bank"
+    ],
+    "conditions_covered": [
+      "accident", "disability", "accidental death", "polytrauma"
+    ],
+    "state": "all_india",
+    "apply_link": "https://www.jansuraksha.gov.in/Forms-PMSBY.aspx",
+    "helpline": "1800-180-1111",
+    "description": "Ultra low-cost accidental death and disability insurance available to all bank account holders at ₹20 per year."
+  },
+  {
+    "id": "scheme_008",
+    "name": "Pradhan Mantri Jeevan Jyoti Bima Yojana (PMJJBY)",
+    "type": "life_insurance",
+    "level": "central",
+    "coverage": "₹2,00,000 life insurance cover for death due to any cause",
+    "eligibility": [
+      "Indian citizens aged 18–50 years",
+      "Must have a bank or post-office account",
+      "Auto-debit of ₹436/year as premium"
+    ],
+    "income_criteria": "None",
+    "age_criteria": "18 to 50 years (coverage continues to 55)",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Savings Bank / Post Office Account",
+      "Consent-cum-declaration form"
+    ],
+    "benefits": [
+      "₹2 lakh life cover for death due to any reason",
+      "Premium of ₹436/year auto-debited from bank",
+      "Annual renewal, no medical exam needed"
+    ],
+    "conditions_covered": [
+      "death", "life insurance", "term insurance"
+    ],
+    "state": "all_india",
+    "apply_link": "https://www.jansuraksha.gov.in/Forms-PMJJBY.aspx",
+    "helpline": "1800-180-1111",
+    "description": "Government-backed pure-term life insurance scheme providing ₹2 lakh cover at an annual premium of ₹436."
+  },
+  {
+    "id": "scheme_009",
+    "name": "Rashtriya Arogya Nidhi (RAN)",
+    "type": "medical_assistance",
+    "level": "central",
+    "coverage": "One-time financial assistance up to ₹15,00,000 for life-threatening diseases",
+    "eligibility": [
+      "BPL patients suffering from life-threatening diseases",
+      "Treatment at government super-specialty hospitals or institutes only",
+      "Family income below ₹1,00,000/year"
+    ],
+    "income_criteria": "Family income below ₹1,00,000/year",
+    "age_criteria": "No restriction",
+    "bpl_required": true,
+    "documents_required": [
+      "BPL Certificate",
+      "Income Certificate from District Magistrate / Tehsildar",
+      "Medical report and estimated cost from treating government hospital",
+      "Aadhaar Card"
+    ],
+    "benefits": [
+      "Up to ₹15 lakh grant for one-time treatment of life-threatening diseases",
+      "Directly disbursed to the government hospital treating the patient"
+    ],
+    "conditions_covered": [
+      "cancer", "renal failure", "heart disease", "liver failure",
+      "organ transplant", "stem cell transplant", "bone marrow transplant"
+    ],
+    "state": "all_india",
+    "apply_link": "https://main.mohfw.gov.in",
+    "helpline": "011-23061469",
+    "description": "Central government grant of up to ₹15 lakh for BPL patients needing treatment for life-threatening diseases at government super-specialty hospitals."
+  },
+  {
+    "id": "scheme_010",
+    "name": "Health Minister's Discretionary Grant (HMDG)",
+    "type": "medical_assistance",
+    "level": "central",
+    "coverage": "Up to ₹1,25,000 for treatment at government hospitals",
+    "eligibility": [
+      "Patients below poverty line",
+      "Must be treated at a government hospital",
+      "Applied directly to the Union Health Minister's office"
+    ],
+    "income_criteria": "BPL",
+    "age_criteria": "No restriction",
+    "bpl_required": true,
+    "documents_required": [
+      "BPL Certificate",
+      "Medical report from government doctor",
+      "Aadhaar Card",
+      "Bank Account details"
+    ],
+    "benefits": [
+      "Up to ₹1.25 lakh financial assistance for hospitalization at government hospitals",
+      "Can be used for diagnosis, drugs, and treatment costs"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "kidney disease", "liver disease"
+    ],
+    "state": "all_india",
+    "apply_link": "https://main.mohfw.gov.in",
+    "helpline": "011-23061469",
+    "description": "Discretionary financial grant from the Union Health Ministry for BPL patients receiving treatment at central government hospitals."
+  },
+  {
+    "id": "scheme_011",
+    "name": "Ayushman Bharat Health and Wellness Centres (AB-HWC)",
+    "type": "primary_care",
+    "level": "central",
+    "coverage": "Free primary healthcare services including screening, diagnostics, and essential medicines",
+    "eligibility": [
+      "All citizens – universal coverage",
+      "No income or BPL requirement"
+    ],
+    "income_criteria": "None – universal",
+    "age_criteria": "All ages",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card (recommended, not mandatory)",
+      "Any government photo ID"
+    ],
+    "benefits": [
+      "Free screening for diabetes, hypertension, and common cancers (oral, breast, cervical)",
+      "Free essential medicines and diagnostics",
+      "Teleconsultation services via eSanjeevani",
+      "Wellness and yoga sessions"
+    ],
+    "conditions_covered": [
+      "diabetes screening", "hypertension screening", "cancer screening",
+      "oral cancer", "breast cancer", "cervical cancer",
+      "maternal health", "child health", "mental health", "eye care", "ENT problems"
+    ],
+    "state": "all_india",
+    "apply_link": "https://ab-hwc.nhp.gov.in",
+    "helpline": "14555",
+    "description": "1,50,000+ Health and Wellness Centres across India providing comprehensive primary healthcare including free screening for NCDs, essential medicines, and teleconsultation."
+  },
+  {
+    "id": "scheme_012",
+    "name": "National Programme for Prevention and Control of Cancer, Diabetes, CVD & Stroke (NPCDCS)",
+    "type": "screening_prevention",
+    "level": "central",
+    "coverage": "Free screening, early detection, and management of NCDs at district level",
+    "eligibility": [
+      "All citizens above 30 years of age",
+      "Screening conducted at HWCs, PHCs, CHCs, and District Hospitals"
+    ],
+    "income_criteria": "None – universal",
+    "age_criteria": "30 years and above",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card or any ID proof"
+    ],
+    "benefits": [
+      "Free population-based screening for diabetes, hypertension, and cancers",
+      "Free blood sugar and blood pressure testing",
+      "Free cancer screening: oral, breast, cervical",
+      "Referral for advanced diagnosis and treatment at NCD clinics"
+    ],
+    "conditions_covered": [
+      "diabetes", "hypertension", "cancer", "stroke",
+      "cardiovascular disease", "oral cancer", "breast cancer", "cervical cancer",
+      "high blood sugar", "high blood pressure", "cholesterol"
+    ],
+    "state": "all_india",
+    "apply_link": "https://dghs.gov.in/content/1363_3_NationalProgrammePreventionControl.aspx",
+    "helpline": "104",
+    "description": "National screening programme providing free testing and management for diabetes, hypertension, cancers, and cardiovascular diseases at all government health facilities."
+  },
+  {
+    "id": "scheme_013",
+    "name": "Pradhan Mantri National Dialysis Programme (PMNDP)",
+    "type": "treatment_support",
+    "level": "central",
+    "coverage": "Free dialysis services at district hospitals through PPP model",
+    "eligibility": [
+      "All BPL patients requiring dialysis",
+      "APL patients at subsidized rates"
+    ],
+    "income_criteria": "Free for BPL; subsidized for all others",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "BPL card (for free service) or any ID",
+      "Nephrologist referral / prescription"
+    ],
+    "benefits": [
+      "Free haemodialysis sessions for BPL patients",
+      "Dialysis at district hospital level on PPP basis",
+      "Uses peritoneal dialysis and haemodialysis",
+      "Medicines and consumables included"
+    ],
+    "conditions_covered": [
+      "kidney failure", "renal failure", "dialysis", "chronic kidney disease",
+      "end-stage renal disease", "creatinine", "high urea"
+    ],
+    "state": "all_india",
+    "apply_link": "https://pmndp.nhp.gov.in",
+    "helpline": "104",
+    "description": "Free or subsidized dialysis programme at district hospitals across India for patients with kidney failure."
+  },
+  {
+    "id": "scheme_014",
+    "name": "National Programme for Health Care of the Elderly (NPHCE)",
+    "type": "elderly_care",
+    "level": "central",
+    "coverage": "Free geriatric healthcare services at district and sub-district levels",
+    "eligibility": [
+      "Senior citizens aged 60 years and above",
+      "Available at district hospitals, CHCs, and PHCs"
+    ],
+    "income_criteria": "None – universal for elderly",
+    "age_criteria": "60 years and above",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Age proof (voter ID, passport, senior citizen card)"
+    ],
+    "benefits": [
+      "Dedicated geriatric OPD and ward at district hospitals",
+      "Free diagnosis, treatment, and medicines for age-related illnesses",
+      "Prosthetic aids and assistive devices",
+      "Physiotherapy and rehabilitation"
+    ],
+    "conditions_covered": [
+      "diabetes", "hypertension", "arthritis", "cataract", "hearing loss",
+      "dementia", "osteoporosis", "Parkinson's", "geriatric care"
+    ],
+    "state": "all_india",
+    "apply_link": "https://mohfw.gov.in",
+    "helpline": "14567",
+    "description": "National programme providing dedicated, free geriatric healthcare for senior citizens at government hospitals."
+  },
+  {
+    "id": "scheme_015",
+    "name": "Pradhan Mantri Matru Vandana Yojana (PMMVY)",
+    "type": "maternal_health",
+    "level": "central",
+    "coverage": "₹5,000 cash incentive for first living child (₹6,000 for second girl child under PMMVY 2.0)",
+    "eligibility": [
+      "Pregnant women and lactating mothers for first living child",
+      "Under PMMVY 2.0: ₹6,000 for second child if girl",
+      "Registration within 150 days of last menstrual period (LMP)"
+    ],
+    "income_criteria": "None – universal for first pregnancy (except regular govt. employees)",
+    "age_criteria": "19 years and above",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card of mother (and husband)",
+      "MCP Card",
+      "Bank/Post Office Account",
+      "LMP registration from ANM/Doctor"
+    ],
+    "benefits": [
+      "₹5,000 in three instalments for first child: ₹1,000 + ₹2,000 + ₹2,000",
+      "₹6,000 for second child if girl (₹2,000 + ₹4,000 under PMMVY 2.0)",
+      "Encourages timely registration, ANC checkups, and institutional delivery"
+    ],
+    "conditions_covered": [
+      "pregnancy", "maternal health", "first child", "girl child",
+      "nutritional support", "antenatal care"
+    ],
+    "state": "all_india",
+    "apply_link": "https://pmmvy.wcd.gov.in",
+    "helpline": "181",
+    "description": "Cash transfer scheme for pregnant women to offset wage-loss and nutrition costs during pregnancy and child birth."
+  },
+  {
+    "id": "scheme_016",
+    "name": "National Iron Plus Initiative (NIPI)",
+    "type": "nutritional_support",
+    "level": "central",
+    "coverage": "Free iron-folic acid (IFA) supplementation for all age groups",
+    "eligibility": [
+      "Children 6 months – 19 years",
+      "Pregnant and lactating women",
+      "Women of reproductive age group (20–49 years)"
+    ],
+    "income_criteria": "None – universal",
+    "age_criteria": "6 months and above",
+    "bpl_required": false,
+    "documents_required": [
+      "No documents needed – available at any government health facility or Anganwadi"
+    ],
+    "benefits": [
+      "Free weekly IFA tablets/syrup through Anganwadis and schools",
+      "Biannual deworming",
+      "Screening and treatment of anemia"
+    ],
+    "conditions_covered": [
+      "anemia", "iron deficiency", "low hemoglobin", "pallor",
+      "fatigue", "weakness", "pregnancy anemia"
+    ],
+    "state": "all_india",
+    "apply_link": "https://nhm.gov.in",
+    "helpline": "104",
+    "description": "National programme providing free iron and folic acid supplements to combat anaemia across all age groups."
+  },
+  {
+    "id": "scheme_017",
+    "name": "National Tuberculosis Elimination Programme (NTEP) – Nikshay Poshan Yojana",
+    "type": "treatment_support",
+    "level": "central",
+    "coverage": "₹500/month nutritional support + free treatment for TB patients",
+    "eligibility": [
+      "All notified TB patients registered on the Nikshay portal",
+      "No income or BPL criteria – universal for TB patients"
+    ],
+    "income_criteria": "None",
+    "age_criteria": "All ages",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Nikshay registration ID",
+      "Bank account"
+    ],
+    "benefits": [
+      "₹500 per month deposited directly into bank account for nutrition",
+      "Free diagnosis via CBNAAT/TrueNat/X-ray at govt. facilities",
+      "Free DOTS-based TB treatment",
+      "Free drug-resistant TB treatment at DRTB centres"
+    ],
+    "conditions_covered": [
+      "tuberculosis", "TB", "MDR-TB", "drug-resistant TB",
+      "pulmonary TB", "extrapulmonary TB", "cough"
+    ],
+    "state": "all_india",
+    "apply_link": "https://nikshay.in",
+    "helpline": "1800-11-6666",
+    "description": "India's TB elimination programme providing free diagnosis, treatment, and ₹500/month nutritional support to all TB patients."
+  },
+  {
+    "id": "scheme_018",
+    "name": "National Mental Health Programme (NMHP) – District Mental Health Programme",
+    "type": "mental_health",
+    "level": "central",
+    "coverage": "Free mental health services at district level",
+    "eligibility": [
+      "All citizens requiring mental health support",
+      "Available at District Mental Health Programme (DMHP) centres"
+    ],
+    "income_criteria": "None – universal",
+    "age_criteria": "All ages",
+    "bpl_required": false,
+    "documents_required": [
+      "Any government ID (Aadhaar recommended)"
+    ],
+    "benefits": [
+      "Free OPD consultation with psychiatrist at district hospital",
+      "Free psychotropic medicines",
+      "Counselling services",
+      "Tele-MANAS helpline for 24/7 support"
+    ],
+    "conditions_covered": [
+      "depression", "anxiety", "schizophrenia", "bipolar disorder",
+      "substance abuse", "mental health", "stress", "insomnia",
+      "PTSD", "OCD", "panic disorder"
+    ],
+    "state": "all_india",
+    "apply_link": "https://telemanas.mohfw.gov.in",
+    "helpline": "14416",
+    "description": "Free government mental health programme providing psychiatry OPD, medicines, and counselling at district hospitals, plus 24/7 Tele-MANAS helpline."
+  },
+  {
+    "id": "scheme_019",
+    "name": "National Programme for Control of Blindness and Visual Impairment (NPCBVI)",
+    "type": "treatment_support",
+    "level": "central",
+    "coverage": "Free cataract surgery and eye care services",
+    "eligibility": [
+      "All citizens requiring eye care",
+      "Priority for BPL families, elderly, and school children"
+    ],
+    "income_criteria": "Free for BPL; subsidized for others",
+    "age_criteria": "All ages",
+    "bpl_required": false,
+    "documents_required": [
+      "Any government ID",
+      "Referral from PHC/CHC (for surgery)"
+    ],
+    "benefits": [
+      "Free cataract surgery with intraocular lens (IOL)",
+      "Free school eye screening programme",
+      "Free spectacles for poor patients",
+      "Treatment for glaucoma, diabetic retinopathy, and corneal blindness"
+    ],
+    "conditions_covered": [
+      "cataract", "glaucoma", "diabetic retinopathy", "blindness",
+      "visual impairment", "eye disease", "myopia", "corneal disease"
+    ],
+    "state": "all_india",
+    "apply_link": "https://npcbvi.mohfw.gov.in",
+    "helpline": "104",
+    "description": "National programme providing free cataract surgery, eye screening, spectacles, and treatment for eye diseases."
+  },
+  {
+    "id": "scheme_020",
+    "name": "Arogya Karnataka Scheme",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "₹5,00,000 per family per year (universal for Karnataka residents)",
+    "eligibility": [
+      "All families in Karnataka with annual income up to ₹5,00,000 — free cashless",
+      "Families with income ₹5,00,000 – ₹10,00,000 — subsidized (30% co-pay)",
+      "Above ₹10,00,000 — can enroll at full premium"
+    ],
+    "income_criteria": "Free for income ≤ ₹5 lakh; subsidized up to ₹10 lakh",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Ration Card or Income Certificate",
+      "Any Karnataka address proof"
+    ],
+    "benefits": [
+      "Cashless treatment for 1,649 packages at empaneled hospitals",
+      "Covers cardiac, cancer, neuro, renal, neonatal, burns, polytrauma",
+      "15 days pre-hospitalization and 15 days post-hospitalization expenses",
+      "Transport allowance"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "kidney failure", "neurosurgery",
+      "dialysis", "joint replacement", "burns", "neonatal care"
+    ],
+    "state": "karnataka",
+    "apply_link": "https://arogya.karnataka.gov.in",
+    "helpline": "104",
+    "description": "Karnataka's universal health coverage scheme providing free or subsidized cashless hospitalization for families based on income slabs."
+  },
+  {
+    "id": "scheme_021",
+    "name": "Aam Aadmi Bima Yojana (AABY)",
+    "type": "life_insurance",
+    "level": "central",
+    "coverage": "₹30,000 natural death; ₹75,000 accidental death; ₹37,500 partial disability",
+    "eligibility": [
+      "Head of family or one earning member of BPL rural landless households",
+      "Age 18–59 years"
+    ],
+    "income_criteria": "BPL rural landless household",
+    "age_criteria": "18 to 59 years",
+    "bpl_required": true,
+    "documents_required": [
+      "BPL Card",
+      "Aadhaar Card",
+      "Landless certificate from revenue department"
+    ],
+    "benefits": [
+      "₹30,000 on natural death",
+      "₹75,000 on accidental death",
+      "₹37,500 on permanent partial disability",
+      "₹75,000 on permanent total disability",
+      "Scholarship of ₹100/month for 2 children studying in 9th-12th class"
+    ],
+    "conditions_covered": [
+      "death", "accident", "disability", "rural landless"
+    ],
+    "state": "all_india",
+    "apply_link": "https://licindia.in",
+    "helpline": "1800-22-7862",
+    "description": "Life and disability insurance for rural landless BPL household earning members."
+  },
+  {
+    "id": "scheme_022",
+    "name": "Rashtriya Bal Swasthya Karyakram (RBSK)",
+    "type": "child_health",
+    "level": "central",
+    "coverage": "Free health screening and treatment for children 0–18 years",
+    "eligibility": [
+      "All children from birth to 18 years",
+      "Screened at government schools, Anganwadi centres, and health facilities"
+    ],
+    "income_criteria": "None – universal for children",
+    "age_criteria": "0 to 18 years",
+    "bpl_required": false,
+    "documents_required": [
+      "School/Anganwadi registration (for institutional screening)",
+      "Birth certificate or Aadhaar (for treatment referral)"
+    ],
+    "benefits": [
+      "Screening for 30 health conditions including 4Ds: Defects at birth, Deficiencies, Diseases, Developmental delays",
+      "Free treatment and surgery for congenital heart disease, cleft lip/palate, club foot, hearing defects",
+      "Mobile Medical Teams visit schools and Anganwadis"
+    ],
+    "conditions_covered": [
+      "congenital heart disease", "cleft lip", "cleft palate", "club foot",
+      "hearing loss", "vision problems", "developmental delay",
+      "anemia in children", "malnutrition", "dental problems"
+    ],
+    "state": "all_india",
+    "apply_link": "https://nhm.gov.in",
+    "helpline": "104",
+    "description": "National child health screening programme providing free screening and treatment for 30 conditions across 0-18 age group through school and Anganwadi visits."
+  },
+  {
+    "id": "scheme_023",
+    "name": "Ayushman Bharat Digital Mission (ABDM) – Health ID",
+    "type": "digital_health",
+    "level": "central",
+    "coverage": "Free digital health ID and longitudinal health records",
+    "eligibility": [
+      "All Indian citizens",
+      "Can create ABHA (Ayushman Bharat Health Account) using Aadhaar or mobile number"
+    ],
+    "income_criteria": "None – universal",
+    "age_criteria": "All ages",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card or Mobile Number (for creating ABHA ID)"
+    ],
+    "benefits": [
+      "Unique 14-digit Health ID (ABHA number)",
+      "Centralized digital health records accessible across hospitals",
+      "Teleconsultation via linked platforms",
+      "Integration with all government health schemes"
+    ],
+    "conditions_covered": [],
+    "state": "all_india",
+    "apply_link": "https://healthid.ndhm.gov.in",
+    "helpline": "1800-11-4477",
+    "description": "India's unified digital health platform providing every citizen a Health ID for seamless access to health records and services."
+  },
+  {
+    "id": "scheme_024",
+    "name": "Mukhyamantri Amrutum (MA) Yojana",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "Up to ₹5,00,000 per family per year",
+    "eligibility": [
+      "BPL families in Gujarat",
+      "Lower-middle-class families with annual income ≤ ₹4,00,000",
+      "Unorganized sector workers"
+    ],
+    "income_criteria": "Annual family income ≤ ₹4,00,000",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "BPL Card or Income Certificate",
+      "Ration Card"
+    ],
+    "benefits": [
+      "Cashless treatment at empaneled hospitals",
+      "Covers cardiac, neuro, cancer, renal, neonatal, burns surgeries",
+      "Transportation allowance of ₹300 per hospitalization"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "kidney transplant", "neurosurgery",
+      "burns", "neonatal care", "joint replacement"
+    ],
+    "state": "gujarat",
+    "apply_link": "https://magujarat.gov.in",
+    "helpline": "104",
+    "description": "Gujarat's health insurance scheme providing cashless hospitalization for BPL and lower-middle-class families."
+  },
+  {
+    "id": "scheme_025",
+    "name": "Dr. YSR Aarogyasri Health Care Trust",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "Up to ₹5,00,000 per family per year for listed procedures",
+    "eligibility": [
+      "White ration card holders in Andhra Pradesh",
+      "Annual family income below ₹5,00,000"
+    ],
+    "income_criteria": "Annual family income below ₹5,00,000",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "White Ration Card",
+      "Income Certificate"
+    ],
+    "benefits": [
+      "Cashless treatment at empaneled hospitals for 2,432 procedures",
+      "Covers diagnostics, surgery, post-operative stay, medicines",
+      "Follow-up care for 1 year"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "kidney transplant", "joint replacement",
+      "neurosurgery", "cochlear implant", "liver transplant", "dialysis"
+    ],
+    "state": "andhra_pradesh",
+    "apply_link": "https://www.ysraarogyasri.ap.gov.in",
+    "helpline": "104",
+    "description": "Andhra Pradesh's health scheme providing cashless hospitalization for families below ₹5 lakh income, covering 2400+ procedures."
+  },
+  {
+    "id": "scheme_026",
+    "name": "Mahatma Gandhi Rajya Swasthyodaya Yojana (Chhattisgarh)",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "Up to ₹5,00,000 per family per year",
+    "eligibility": [
+      "All ration card holders in Chhattisgarh",
+      "Families not covered under AB PM-JAY"
+    ],
+    "income_criteria": "No strict income criteria – all ration card holders",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Ration Card",
+      "Chhattisgarh domicile proof"
+    ],
+    "benefits": [
+      "Cashless treatment at empaneled hospitals",
+      "Covers 712 medical and surgical packages",
+      "Transport allowance"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "kidney disease", "neurosurgery", "orthopaedic"
+    ],
+    "state": "chhattisgarh",
+    "apply_link": "https://dkbssy.cg.nic.in",
+    "helpline": "14555",
+    "description": "Chhattisgarh's universal health insurance scheme for all ration card holders not covered by PM-JAY."
+  },
+  {
+    "id": "scheme_027",
+    "name": "Biju Swasthya Kalyan Yojana (BSKY)",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "₹5,00,000 per family per year (women get additional ₹10,00,000 cover)",
+    "eligibility": [
+      "All eligible families in Odisha as per SECC/NFSA food-security database",
+      "Approx. 3.5 crore people covered"
+    ],
+    "income_criteria": "Based on NFSA/SECC data",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Ration Card",
+      "BSKY Smart Health Card"
+    ],
+    "benefits": [
+      "₹5 lakh cashless per family per year; women get additional ₹10 lakh",
+      "Covers hospitalization at empaneled public and private hospitals",
+      "Pre- and post-hospitalization expenses, transport allowance"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "neurosurgery", "organ transplant",
+      "dialysis", "burns", "neonatal care"
+    ],
+    "state": "odisha",
+    "apply_link": "https://bsky.odisha.gov.in",
+    "helpline": "104",
+    "description": "Odisha's flagship health insurance with ₹5 lakh family cover plus additional ₹10 lakh for women, one of India's most generous state health schemes."
+  },
+  {
+    "id": "scheme_028",
+    "name": "Swasthya Sathi (West Bengal)",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "₹5,00,000 per family per year; universal for all WB families",
+    "eligibility": [
+      "All families in West Bengal – universal coverage",
+      "No income or BPL criteria"
+    ],
+    "income_criteria": "None – universal",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Swasthya Sathi Smart Card (issued by the state)"
+    ],
+    "benefits": [
+      "₹5 lakh cashless per family per year",
+      "Covers at empaneled government and private hospitals",
+      "1,559 medical packages"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "kidney disease", "neurosurgery",
+      "burns", "joint replacement", "neonatal ICU"
+    ],
+    "state": "west_bengal",
+    "apply_link": "https://swasthyasathi.gov.in",
+    "helpline": "1800-345-5384",
+    "description": "West Bengal's universal health coverage scheme providing ₹5 lakh cashless hospitalization for all families, regardless of income."
+  },
+  {
+    "id": "scheme_029",
+    "name": "Mukhya Mantri Chiranjeevi Swasthya Bima Yojana (Rajasthan)",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "₹25,00,000 per family per year (₹5 lakh general + ₹20 lakh critical illness top-up)",
+    "eligibility": [
+      "All families in Rajasthan (₹850/year premium for non-NFSA families)",
+      "NFSA, SECC, small/marginal farmers, contractors – free"
+    ],
+    "income_criteria": "Free for NFSA/SECC; ₹850/year for others",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Jan Aadhaar Card (Rajasthan)",
+      "NFSA/BPL card (for free coverage)"
+    ],
+    "benefits": [
+      "₹5 lakh general insurance + ₹20 lakh critical illness top-up",
+      "1,597 medical packages including organ transplant",
+      "Cashless treatment at 700+ empaneled hospitals"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "organ transplant", "neurosurgery",
+      "joint replacement", "dialysis", "burns", "cochlear implant"
+    ],
+    "state": "rajasthan",
+    "apply_link": "https://chiranjeevi.rajasthan.gov.in",
+    "helpline": "181",
+    "description": "Rajasthan's health insurance scheme with one of India's highest covers at ₹25 lakh (₹5L general + ₹20L critical illness), universal with minimal premium."
+  },
+  {
+    "id": "scheme_030",
+    "name": "Karunya Health Scheme (Kerala)",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "Up to ₹5,00,000 per family per year",
+    "eligibility": [
+      "Families with income below ₹3,00,000 per year in Kerala",
+      "BPL families"
+    ],
+    "income_criteria": "Annual family income below ₹3,00,000",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Income Certificate",
+      "BPL or Ration Card"
+    ],
+    "benefits": [
+      "Cashless treatment at empaneled hospitals",
+      "Coverage for critical illnesses including cancer, cardiac, renal",
+      "Treatment at any empaneled hospital in Kerala"
+    ],
+    "conditions_covered": [
+      "cancer", "cardiac surgery", "kidney failure", "neurosurgery",
+      "liver disease", "haemophilia", "thalassemia"
+    ],
+    "state": "kerala",
+    "apply_link": "https://sha.kerala.gov.in",
+    "helpline": "0471-2554040",
+    "description": "Kerala's health insurance scheme providing cashless hospitalization for BPL and low-income families."
+  },
+  {
+    "id": "scheme_031",
+    "name": "Mukhyamantri Chikitsa Sahayata Kosh (MP)",
+    "type": "medical_assistance",
+    "level": "state",
+    "coverage": "Financial assistance up to ₹2,00,000 for critical illnesses",
+    "eligibility": [
+      "BPL families in Madhya Pradesh",
+      "Patients suffering from serious/critical illnesses"
+    ],
+    "income_criteria": "BPL",
+    "age_criteria": "No restriction",
+    "bpl_required": true,
+    "documents_required": [
+      "BPL Card",
+      "Aadhaar Card",
+      "Medical report and cost estimate from government hospital",
+      "Income Certificate"
+    ],
+    "benefits": [
+      "Up to ₹2 lakh financial assistance for critical illness treatment",
+      "Reimbursement after treatment at empaneled hospital"
+    ],
+    "conditions_covered": [
+      "cancer", "cardiac surgery", "kidney transplant", "burns",
+      "liver disease"
+    ],
+    "state": "madhya_pradesh",
+    "apply_link": "https://health.mp.gov.in",
+    "helpline": "104",
+    "description": "Madhya Pradesh's financial assistance scheme for BPL patients with critical illnesses."
+  },
+  {
+    "id": "scheme_032",
+    "name": "Mukhyamantri Jan Arogya Yojana (MJAY – Uttar Pradesh)",
+    "type": "health_insurance",
+    "level": "state",
+    "coverage": "Up to ₹5,00,000 per family per year (for families not covered by PM-JAY)",
+    "eligibility": [
+      "Families in Uttar Pradesh not covered under AB PM-JAY",
+      "Ration card holders, MGNREGA workers, construction workers"
+    ],
+    "income_criteria": "No strict criteria – target is uninsured families",
+    "age_criteria": "No restriction",
+    "bpl_required": false,
+    "documents_required": [
+      "Aadhaar Card",
+      "Ration Card or MGNREGA/labour card"
+    ],
+    "benefits": [
+      "₹5 lakh cashless hospitalization per family per year",
+      "Over 1,554 packages at empaneled hospitals"
+    ],
+    "conditions_covered": [
+      "cardiac surgery", "cancer", "neurosurgery", "kidney disease",
+      "joint replacement", "neonatal care"
+    ],
+    "state": "uttar_pradesh",
+    "apply_link": "https://pmjay.gov.in",
+    "helpline": "14555",
+    "description": "Uttar Pradesh's extension scheme covering families not eligible for PM-JAY with ₹5 lakh cashless hospitalization."
+  }
+]
