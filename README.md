@@ -76,7 +76,7 @@ The user receives a regional-language audio explanation, a simplified health sum
 
 | Layer | Components |
 |-------|------------|
-| **Input** | Medical reports (image / PDF), text queries, voice queries |
+| **Input** | Medical reports (image / PDF), text queries|
 | **Processing** | OCR (Textract), speech-to-text, AI reasoning via Amazon Bedrock |
 | **Knowledge** | RAG over verified medical references and government scheme database |
 | **Output** | Regional-language audio (Polly), text summaries, SMS-based action plans |
