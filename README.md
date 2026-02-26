@@ -45,7 +45,7 @@ AccessAI provides instant, voice-based explanations of medical reports and conne
 | Step | Actions |
 |------|---------|
 | **Language Selection** | User selects preferred language |
-| **Upload/Query** | Uploads a medical report or asks a question (text or voice) |
+| **Upload/Query** | Uploads a medical report or asks a question (text) |
 
 ### 2. Processing
 
