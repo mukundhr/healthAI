@@ -15,10 +15,10 @@ const Footer = () => (
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-foreground transition-colors">About</Link>
-          <Link to="/" className="hover:text-foreground transition-colors">Privacy</Link>
-          <Link to="/" className="hover:text-foreground transition-colors">Disclaimer</Link>
-          <Link to="/" className="hover:text-foreground transition-colors">Contact</Link>
+          <Link to="/about" className="hover:text-foreground transition-colors">About</Link>
+          <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+          <Link to="/disclaimer" className="hover:text-foreground transition-colors">Disclaimer</Link>
+          <Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link>
         </div>
 
         <p className="text-xs text-muted-foreground/60">© 2026 AccessAI</p>
