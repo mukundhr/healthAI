@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 import logging
 
 from app.api.endpoints import documents, analysis, schemes, audio
+from app.api.endpoints import notifications
 from app.core import config
 
 # Configure logging
@@ -67,6 +68,11 @@ app.include_router(
     audio.router,
     prefix="/api/v1/audio",
     tags=["Audio"]
+)
+app.include_router(
+    notifications.router,
+    prefix="/api/v1/notifications",
+    tags=["Notifications"]
 )
 
 

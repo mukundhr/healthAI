@@ -71,6 +71,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Embedding cache
+.embedding_cache/
+
 # C extensions
 *.so
 

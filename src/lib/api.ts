@@ -69,6 +69,7 @@ export interface KeyFinding {
   normal_range: string;
   status: 'normal' | 'high' | 'low' | 'critical';
   explanation: string;
+  source: string;
 }
 
 export interface AbnormalValue {
@@ -86,6 +87,32 @@ export interface SourceGroundingItem {
   status: 'normal' | 'high' | 'low';
 }
 
+export interface EmergencyAlert {
+  test_name: string;
+  value: number;
+  unit: string;
+  threshold: string;
+  direction: 'critically_low' | 'critically_high';
+  severity: 'critical' | 'urgent';
+  message: string;
+  action: string;
+}
+
+export interface EmergencyInfo {
+  has_emergency: boolean;
+  alert_count: number;
+  alerts: EmergencyAlert[];
+  emergency_resources: Record<string, string>;
+  disclaimer: string;
+}
+
+export interface ConfidenceBreakdown {
+  ocr_confidence: number;
+  extraction_completeness: number;
+  abnormal_value_certainty: number;
+  llm_self_evaluation: number;
+}
+
 export interface AnalysisResponse {
   session_id: string;
   document_id: string;
@@ -96,11 +123,19 @@ export interface AnalysisResponse {
   questions_for_doctor: string[];
   confidence: number;
   confidence_notes: string;
+  confidence_breakdown?: ConfidenceBreakdown;
   ocr_confidence: number;
   source_grounding: SourceGroundingItem[];
+  emergency?: EmergencyInfo;
   language: Language;
   model: string;
   processing_time_ms: number;
+}
+
+export interface SMSResponse {
+  success: boolean;
+  message_id?: string;
+  message: string;
 }
 
 export interface FollowUpResponse {
@@ -108,6 +143,12 @@ export interface FollowUpResponse {
   related_values: string[];
   should_ask_doctor: boolean;
   confidence: 'high' | 'medium' | 'low';
+}
+
+export interface MatchFactor {
+  factor: string;
+  matched: boolean;
+  detail: string;
 }
 
 export interface SchemeInfo {
@@ -120,6 +161,7 @@ export interface SchemeInfo {
   benefits: string[];
   state: string;
   match_reason: string;
+  match_factors: MatchFactor[];
   apply_link?: string;
   helpline: string;
   relevance_score: number;
@@ -291,6 +333,24 @@ class AccessAIApiClient {
     return this.request('/audio/synthesize-explanation', {
       method: 'POST',
       body: JSON.stringify({ explanation, language }),
+    });
+  }
+
+  // SMS endpoints
+  async sendSMSSummary(
+    sessionId: string,
+    phoneNumber: string,
+    includeSchemes: boolean = false,
+    language: Language = 'en'
+  ): Promise<SMSResponse> {
+    return this.request<SMSResponse>('/notifications/send-summary', {
+      method: 'POST',
+      body: JSON.stringify({
+        session_id: sessionId,
+        phone_number: phoneNumber,
+        include_schemes: includeSchemes,
+        language,
+      }),
     });
   }
 }

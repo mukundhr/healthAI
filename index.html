@@ -3,14 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- TODO: Set the document title to the name of your application -->
     <title>AccessAI</title>
-    <meta name="description" content="AccessAI - AI-Powered Scheme Detection Platform" />
+    <meta name="description" content="AccessAI" />
     <meta name="author" content="AccessAI" />
+    <meta name="theme-color" content="#6d28d9" />
 
-    <!-- TODO: Update og:title to match your application name -->
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+
+    <!-- Open Graph -->
     <meta property="og:title" content="AccessAI" />
-    <meta property="og:description" content="AccessAI - AI-Powered Scheme Detection Platform" />
+    <meta property="og:description" content="Voice-first, multilingual medical report understanding for everyone." />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="https://accessai.app/opengraph-image.png" />
 
@@ -22,5 +26,13 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register service worker for PWA / offline support
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(() => {});
+        });
+      }
+    </script>
   </body>
 </html>

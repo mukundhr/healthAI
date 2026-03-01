@@ -95,6 +95,8 @@ IMPORTANT RULES:
    "Your doctor can help clarify…" etc.
 6. If something is unclear, say "I'm not certain about this value" explicitly.
 7. Always recommend consulting a doctor for interpretation.
+8. Begin the summary with: "⚕️ This is an AI-generated interpretation for informational purposes only. Always consult a qualified medical professional."
+9. For EACH key finding, include the field "source" indicating where in the report the value was found (e.g. "Row 3 of CBC table", "Line: Hemoglobin 12.5 g/dL"). If unclear, say "Derived from report text".
 
 MEDICAL REPORT TEXT:
 ---
@@ -112,7 +114,8 @@ Please respond ONLY in valid JSON with this exact structure:
       "value": "The measured value with unit",
       "normal_range": "Normal reference range",
       "status": "normal | high | low | critical",
-      "explanation": "Simple explanation of what this means"
+      "explanation": "Simple explanation of what this means",
+      "source": "Where this value was found in the report (e.g. 'CBC table row 3' or 'Line: Hemoglobin 12.5 g/dL')"
     }}
   ],
   "abnormal_values": [
@@ -159,20 +162,13 @@ CRITICAL: Respond ONLY with valid JSON. No markdown, no code blocks, no extra te
         )
 
         try:
-            response = bedrock_runtime.invoke_model(
+            response = bedrock_runtime.converse(
                 modelId=settings.AWS_BEDROCK_MODEL_ID,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 4096,
-                    "temperature": 0.3,
-                    "messages": [{"role": "user", "content": prompt}],
-                }),
+                messages=[{"role": "user", "content": [{"text": prompt}]}],
+                inferenceConfig={"maxTokens": 4096, "temperature": 0.3},
             )
 
-            response_body = json.loads(response["body"].read().decode("utf-8"))
-            raw_text = response_body["content"][0]["text"]
+            raw_text = response["output"]["message"]["content"][0]["text"]
 
             # Parse JSON response
             analysis = self._parse_analysis_response(raw_text)
@@ -240,35 +236,68 @@ CRITICAL: Respond ONLY with valid JSON. No markdown, no code blocks, no extra te
     def _calculate_confidence(
         self, analysis: Dict, ocr_confidence: float, text: str
     ) -> int:
-        """Calculate overall confidence score (0-100)."""
-        score = 80  # Base confidence
+        """Calculate overall confidence score (0-100) from four grounded signals.
 
-        # Penalize low OCR confidence
-        if ocr_confidence < 70:
-            score -= 15
-        elif ocr_confidence < 85:
-            score -= 5
+        Weighted formula (transparent & auditable):
+          1. OCR confidence       (30%) — how readable was the document
+          2. Extraction coverage  (25%) — did we find enough test values
+          3. Abnormal certainty   (25%) — do findings align with local grounding
+          4. LLM self-evaluation  (20%) — does the LLM flag uncertainty
 
-        # Penalize if analysis has few findings (may indicate poor extraction)
+        Each component is normalised to 0-100 then combined.
+        """
+        breakdown: Dict[str, float] = {}
+
+        # --- 1. OCR signal (30%) ---
+        ocr_score = min(ocr_confidence, 100.0)  # already 0-100
+        breakdown["ocr_confidence"] = round(ocr_score, 1)
+
+        # --- 2. Extraction completeness (25%) ---
         findings_count = len(analysis.get("key_findings", []))
-        if findings_count == 0:
-            score -= 10
-        elif findings_count < 3:
-            score -= 5
+        text_len = len(text)
+        # score rises with more findings and longer text
+        if text_len < 100:
+            extraction = 20.0
+        elif text_len < 300:
+            extraction = 40.0
+        else:
+            extraction = min(60.0 + findings_count * 5.0, 100.0)
+        breakdown["extraction_completeness"] = round(extraction, 1)
 
-        # Check text length (very short text = likely incomplete)
-        if len(text) < 100:
-            score -= 20
-        elif len(text) < 300:
-            score -= 10
+        # --- 3. Abnormal-value certainty (25%) ---
+        # How well do LLM-reported abnormals align with locally grounded values?
+        source_grounding = analysis.get("source_grounding", [])
+        llm_abnormals = {av.get("test_name", "").lower() for av in analysis.get("abnormal_values", [])}
+        grounded_abnormals = {sg.get("test_name", "").lower() for sg in source_grounding if sg.get("status") != "normal"}
+        if llm_abnormals and grounded_abnormals:
+            overlap = len(llm_abnormals & grounded_abnormals)
+            abnormal_cert = (overlap / max(len(llm_abnormals), 1)) * 100.0
+        elif not llm_abnormals and not grounded_abnormals:
+            abnormal_cert = 90.0  # consistent: neither found abnormals
+        else:
+            abnormal_cert = 50.0  # partial agreement
+        breakdown["abnormal_value_certainty"] = round(abnormal_cert, 1)
 
-        # Check if confidence_notes mention uncertainty
+        # --- 4. LLM self-evaluation (20%) ---
         notes = analysis.get("confidence_notes", "").lower()
-        uncertainty_words = ["uncertain", "unclear", "not sure", "limited", "partial", "incomplete"]
-        if any(w in notes for w in uncertainty_words):
-            score -= 10
+        uncertainty_words = ["uncertain", "unclear", "not sure", "limited", "partial", "incomplete", "could not"]
+        uncertainty_hits = sum(1 for w in uncertainty_words if w in notes)
+        llm_self = max(100.0 - uncertainty_hits * 20.0, 10.0)
+        breakdown["llm_self_evaluation"] = round(llm_self, 1)
 
-        return max(10, min(95, score))
+        # --- Weighted combination ---
+        weighted = (
+            ocr_score * 0.30
+            + extraction * 0.25
+            + abnormal_cert * 0.25
+            + llm_self * 0.20
+        )
+        final = max(10, min(95, int(round(weighted))))
+
+        # Attach breakdown so the frontend can show it
+        analysis["confidence_breakdown"] = breakdown
+
+        return final
 
     def _detect_abnormal_values_locally(self, text: str) -> List[Dict[str, Any]]:
         """
@@ -361,20 +390,13 @@ Respond in JSON:
 }}"""
 
         try:
-            response = bedrock_runtime.invoke_model(
+            response = bedrock_runtime.converse(
                 modelId=settings.AWS_BEDROCK_MODEL_ID,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 1024,
-                    "temperature": 0.3,
-                    "messages": [{"role": "user", "content": prompt}],
-                }),
+                messages=[{"role": "user", "content": [{"text": prompt}]}],
+                inferenceConfig={"maxTokens": 1024, "temperature": 0.3},
             )
 
-            response_body = json.loads(response["body"].read().decode("utf-8"))
-            raw = response_body["content"][0]["text"]
+            raw = response["output"]["message"]["content"][0]["text"]
 
             try:
                 return json.loads(raw)

@@ -74,12 +74,20 @@ class AnalysisRequest(BaseModel):
     user_context: Optional[Dict[str, Any]] = None
 
 
+class ConfidenceBreakdown(BaseModel):
+    ocr_confidence: float = 0
+    extraction_completeness: float = 0
+    abnormal_value_certainty: float = 0
+    llm_self_evaluation: float = 0
+
+
 class KeyFinding(BaseModel):
     test_name: str
     value: str
     normal_range: str = ""
     status: str = "normal"
     explanation: str = ""
+    source: str = ""
 
 
 class AbnormalValue(BaseModel):
@@ -97,6 +105,25 @@ class SourceGroundingItem(BaseModel):
     status: str
 
 
+class EmergencyAlert(BaseModel):
+    test_name: str
+    value: float
+    unit: str = ""
+    threshold: str = ""
+    direction: str = ""
+    severity: str = "critical"
+    message: str
+    action: str
+
+
+class EmergencyInfo(BaseModel):
+    has_emergency: bool = False
+    alert_count: int = 0
+    alerts: List[EmergencyAlert] = []
+    emergency_resources: Dict[str, str] = {}
+    disclaimer: str = ""
+
+
 class AnalysisResponse(BaseModel):
     session_id: str
     document_id: str
@@ -107,8 +134,10 @@ class AnalysisResponse(BaseModel):
     questions_for_doctor: List[str] = []
     confidence: int = 0
     confidence_notes: str = ""
+    confidence_breakdown: Optional[ConfidenceBreakdown] = None
     ocr_confidence: float = 0
     source_grounding: List[SourceGroundingItem] = []
+    emergency: Optional[EmergencyInfo] = None
     language: Language = Language.ENGLISH
     model: str = ""
     processing_time_ms: int = 0
@@ -141,6 +170,12 @@ class SchemeMatchRequest(BaseModel):
     language: Language = Language.ENGLISH
 
 
+class MatchFactor(BaseModel):
+    factor: str
+    matched: bool
+    detail: str
+
+
 class SchemeInfo(BaseModel):
     id: str
     name: str
@@ -151,6 +186,7 @@ class SchemeInfo(BaseModel):
     benefits: List[str]
     state: str
     match_reason: str
+    match_factors: List[MatchFactor] = []
     apply_link: Optional[str] = None
     helpline: str = ""
     relevance_score: float = 0
@@ -180,6 +216,21 @@ class AudioResponse(BaseModel):
     language: Language
     duration_estimate_seconds: Optional[float] = None
     expires_at: datetime
+
+
+# ==================== SMS Schemas ====================
+
+class SMSRequest(BaseModel):
+    session_id: str
+    phone_number: str = Field(..., pattern=r"^\+91\d{10}$", description="Indian phone number with +91 prefix")
+    include_schemes: bool = False
+    language: Language = Language.ENGLISH
+
+
+class SMSResponse(BaseModel):
+    success: bool
+    message_id: Optional[str] = None
+    message: str = ""
 
 
 # ==================== Health Check ====================

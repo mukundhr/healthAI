@@ -13,7 +13,9 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = [
         "http://localhost:5173",  # Vite dev server
         "http://localhost:3000",  # Common dev server
+        "http://localhost:8080",  # Vite dev server (configured port)
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:8080",
     ]
     
     # AWS Configuration
@@ -24,10 +26,13 @@ class Settings(BaseSettings):
     # AWS Services
     AWS_S3_BUCKET: str = "accessai-documents"
     AWS_TEXTTRACT_ROLE_ARN: str = ""  # Cross-account role for Textract
-    AWS_BEDROCK_MODEL_ID: str = "aanthropic.claude-haiku-4-5-20251001-v1:0"
+    AWS_BEDROCK_MODEL_ID: str = "moonshotai.kimi-k2.5"
     AWS_BEDROCK_EMBEDDING_MODEL_ID: str = "amazon.titan-embed-text-v2:0"
     AWS_POLLY_VOICE_ID_HINDI: str = "Aditi"
     AWS_POLLY_VOICE_ID_KANNADA: str = "Kajal"
+    
+    # Feature flags
+    SMS_ENABLED: bool = False  # Set to True to enable SMS via SNS
     
     # Storage
     TEMP_UPLOAD_DIR: str = "/tmp/accessai/uploads"
@@ -43,8 +48,9 @@ class Settings(BaseSettings):
     SESSION_TIMEOUT_MINUTES: int = 30
     
     class Config:
-        env_file = ".env"
+        env_file = "../.env"
         case_sensitive = True
+        extra = "ignore"  # Ignore unknown env vars (e.g. VITE_API_URL)
 
 
 @lru_cache()

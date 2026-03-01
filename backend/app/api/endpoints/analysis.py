@@ -10,6 +10,7 @@ from app.services.aws_service import aws_service
 from app.services.medical_analysis import medical_analysis_service
 from app.services.session_store import sessions_store, analysis_cache
 from app.services.pii_anonymizer import pii_anonymiser, PIIMapping
+from app.services.emergency_detector import emergency_detector
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -107,12 +108,21 @@ async def analyze_medical_report(request: AnalysisRequest):
             "questions_for_doctor": analysis.get("questions_for_doctor", []),
             "confidence": analysis.get("confidence", 0),
             "confidence_notes": analysis.get("confidence_notes", ""),
+            "confidence_breakdown": analysis.get("confidence_breakdown"),
             "ocr_confidence": ocr_result.get("confidence", 0),
             "source_grounding": source_grounding,
             "language": Language(request.language),
             "model": analysis.get("model", ""),
             "processing_time_ms": processing_time_ms,
         }
+
+        # Run emergency detection on the analysis results
+        emergency_result = emergency_detector.detect_critical_values(
+            extracted_text=extracted_text,
+            key_findings=analysis.get("key_findings", []),
+            abnormal_values=analysis.get("abnormal_values", []),
+        )
+        response_data["emergency"] = emergency_result
 
         # Store in session
         sessions_store.update(request.session_id, {

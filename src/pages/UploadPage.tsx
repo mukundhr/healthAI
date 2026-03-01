@@ -5,17 +5,19 @@ import {
   Copy, Download, Play, Pause, RotateCcw, ChevronDown, ChevronUp,
   Wifi, WifiOff, Loader2, CheckCircle2, AlertTriangle, Info,
   ArrowUp, ArrowDown, Minus, Send, X, SkipBack, SkipForward,
-  Eye, Shield, Zap, Phone, Star, ExternalLink, Sparkles
+  Eye, Shield, Zap, Phone, Star, ExternalLink, Sparkles,
+  Siren, MessageCircle, PhoneCall
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import DisclaimerBar from "@/components/DisclaimerBar";
 import GlassCard from "@/components/GlassCard";
 import WaveformVisualizer from "@/components/WaveformVisualizer";
 import { apiClient } from "@/lib/api";
+import { useI18n } from "@/lib/i18n";
 import type {
   AnalysisResponse, DocumentStatus, DocumentUploadResponse,
   SchemeMatchResponse, Language, FollowUpResponse, KeyFinding, AbnormalValue,
-  SourceGroundingItem
+  SourceGroundingItem, EmergencyInfo, SMSResponse
 } from "@/lib/api";
 
 type Step = "upload" | "processing" | "results";
@@ -28,6 +30,7 @@ const LANGUAGES: { code: Language; label: string; native: string }[] = [
 ];
 
 const UploadPage = () => {
+  const { t } = useI18n();
   // Core state
   const [step, setStep] = useState<Step>("upload");
   const [selectedLanguage, setSelectedLanguage] = useState<Language>("en");
@@ -68,6 +71,12 @@ const UploadPage = () => {
   const [chatMessages, setChatMessages] = useState<{ role: "user" | "ai"; text: string }[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // SMS state
+  const [smsPhone, setSmsPhone] = useState("+91");
+  const [smsLoading, setSmsLoading] = useState(false);
+  const [smsSent, setSmsSent] = useState(false);
+  const [smsIncludeSchemes, setSmsIncludeSchemes] = useState(false);
 
   // Panel visibility
   const [showGrounding, setShowGrounding] = useState(false);
@@ -415,7 +424,7 @@ const UploadPage = () => {
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-display font-bold text-xl text-foreground flex items-center gap-2">
                 <FileText className="w-5 h-5 text-primary" />
-                Upload Your Medical Report
+                {t("upload.heading")}
               </h2>
               <div className="flex items-center gap-2">
                 {/* Language Selector */}
@@ -461,8 +470,8 @@ const UploadPage = () => {
                     />
                     <label htmlFor="file-upload" className="cursor-pointer">
                       <Upload className="w-10 h-10 mx-auto mb-3 text-muted-foreground" />
-                      <p className="text-foreground font-medium mb-1">Drag & drop your report here</p>
-                      <p className="text-sm text-muted-foreground">or click to browse · PDF, JPG, PNG · Max 10MB</p>
+                      <p className="text-foreground font-medium mb-1">{t("upload.dropzone")}</p>
+                      <p className="text-sm text-muted-foreground">{t("upload.formats")}</p>
                     </label>
                   </div>
                 </motion.div>
@@ -514,7 +523,62 @@ const UploadPage = () => {
           {/* ===== Results ===== */}
           {step === "results" && (
             <>
-              {/* Central Listen/Explain Button */}
+              {/* ===== EMERGENCY ALERT BANNER ===== */}
+              {analysisResult?.emergency?.has_emergency && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="rounded-2xl border-2 border-red-500/60 bg-red-950/40 p-5 space-y-4 shadow-lg shadow-red-500/10"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center animate-pulse">
+                      <Siren className="w-6 h-6 text-red-400" />
+                    </div>
+                    <div>
+                      <h3 className="font-display font-bold text-lg text-red-300">
+                        Critical Values Detected
+                      </h3>
+                      <p className="text-xs text-red-400/70">
+                        {analysisResult.emergency.alert_count} value{analysisResult.emergency.alert_count !== 1 ? "s" : ""} require immediate medical attention
+                      </p>
+                    </div>
+                  </div>
+
+                  {analysisResult.emergency.alerts.map((alert, i) => (
+                    <div key={i} className="rounded-xl bg-red-500/10 border border-red-500/30 p-4 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-red-300">{alert.test_name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/30 text-red-200 font-mono">
+                          {alert.value} {alert.unit} ({alert.direction === "critically_high" ? "HIGH" : "LOW"})
+                        </span>
+                      </div>
+                      <p className="text-sm text-red-200/80">{alert.message}</p>
+                      <p className="text-sm text-red-300 font-medium flex items-center gap-1.5">
+                        <PhoneCall className="w-4 h-4" />
+                        {alert.action}
+                      </p>
+                    </div>
+                  ))}
+
+                  {/* Emergency numbers */}
+                  <div className="flex flex-wrap gap-3 pt-2 border-t border-red-500/20">
+                    {Object.entries(analysisResult.emergency.emergency_resources).map(([key, number]) => (
+                      <a
+                        key={key}
+                        href={`tel:${number}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-500/20 text-red-200 text-xs hover:bg-red-500/30 transition-colors"
+                      >
+                        <Phone className="w-3 h-3" />
+                        {key.replace(/_/g, " ")}: <strong>{number}</strong>
+                      </a>
+                    ))}
+                  </div>
+
+                  <p className="text-[10px] text-red-400/50 italic">
+                    {analysisResult.emergency.disclaimer}
+                  </p>
+                </motion.div>
+              )}
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -532,9 +596,19 @@ const UploadPage = () => {
 
               {/* AI Summary */}
               <GlassCard delay={0.1}>
+                {/* Medical Safety Disclaimer */}
+                <div className="mb-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-2">
+                  <Shield className="w-4 h-4 text-amber-400 mt-0.5 flex-shrink-0" />
+                  <p className="text-[11px] text-amber-300 leading-relaxed">
+                    <span className="font-semibold">Medical Disclaimer:</span> This is an AI-generated interpretation for informational purposes only.
+                    It is <span className="font-semibold">not a medical diagnosis</span>.
+                    Always consult a qualified healthcare professional before making any medical decisions.
+                  </p>
+                </div>
+
                 <h3 className="font-display font-bold text-lg mb-4 text-foreground flex items-center gap-2">
                   <Brain className="w-5 h-5 text-primary" />
-                  Medical Summary
+                  {t("results.summary")}
                   {isAnalyzing && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
                 </h3>
 
@@ -549,35 +623,60 @@ const UploadPage = () => {
                   </div>
                 )}
 
-                {/* Confidence Panel */}
+                {/* Confidence Panel with Transparent Breakdown */}
                 {analysisResult && (
                   <div className="mt-6 space-y-3">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {[
-                        { label: "AI Confidence", value: analysisResult.confidence },
-                        { label: "OCR Accuracy", value: Math.round(analysisResult.ocr_confidence) },
-                        { label: "Processing", value: 0, text: `${analysisResult.processing_time_ms}ms` },
-                      ].map((m) => (
-                        <div key={m.label} className="text-center">
-                          <p className="text-xs text-muted-foreground mb-1.5">{m.label}</p>
-                          {m.value > 0 ? (
-                            <>
-                              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    {/* Overall confidence bar */}
+                    <div className="text-center">
+                      <p className="text-xs text-muted-foreground mb-1.5">Overall AI Confidence</p>
+                      <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                        <motion.div
+                          className={`h-full rounded-full ${analysisResult.confidence < 60 ? "bg-red-500" : analysisResult.confidence < 80 ? "bg-yellow-500" : "bg-accent"}`}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${analysisResult.confidence}%` }}
+                          transition={{ duration: 0.8, delay: 0.3 }}
+                        />
+                      </div>
+                      <p className="text-sm text-foreground mt-1 font-bold">{analysisResult.confidence}%</p>
+                    </div>
+
+                    {/* 4-signal breakdown */}
+                    {analysisResult.confidence_breakdown && (
+                      <div className="grid grid-cols-2 gap-2 mt-3">
+                        {([
+                          { key: "ocr_confidence" as const, label: "OCR Readability", weight: "30%", icon: <Eye className="w-3 h-3" /> },
+                          { key: "extraction_completeness" as const, label: "Data Extraction", weight: "25%", icon: <FileText className="w-3 h-3" /> },
+                          { key: "abnormal_value_certainty" as const, label: "Value Certainty", weight: "25%", icon: <Shield className="w-3 h-3" /> },
+                          { key: "llm_self_evaluation" as const, label: "LLM Self-Check", weight: "20%", icon: <Brain className="w-3 h-3" /> },
+                        ] as const).map((signal) => {
+                          const val = analysisResult.confidence_breakdown![signal.key];
+                          return (
+                            <div key={signal.key} className="glass-card p-2.5 rounded-xl">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                <span className="text-muted-foreground">{signal.icon}</span>
+                                <span className="text-[10px] text-muted-foreground">{signal.label}</span>
+                                <span className="text-[9px] text-muted-foreground/60 ml-auto">wt {signal.weight}</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                                 <motion.div
-                                  className={`h-full rounded-full ${m.value < 60 ? "bg-red-500" : m.value < 80 ? "bg-yellow-500" : "bg-accent"}`}
+                                  className={`h-full rounded-full ${val < 50 ? "bg-red-400" : val < 75 ? "bg-yellow-400" : "bg-emerald-400"}`}
                                   initial={{ width: 0 }}
-                                  animate={{ width: `${m.value}%` }}
-                                  transition={{ duration: 0.8, delay: 0.3 }}
+                                  animate={{ width: `${val}%` }}
+                                  transition={{ duration: 0.6, delay: 0.5 }}
                                 />
                               </div>
-                              <p className="text-xs text-foreground mt-1 font-medium">{m.value}%</p>
-                            </>
-                          ) : (
-                            <p className="text-xs text-foreground font-medium">{m.text}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
+                              <p className="text-[10px] text-foreground font-medium mt-0.5">{val}%</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Processing time */}
+                    <p className="text-[10px] text-muted-foreground text-center">
+                      Processed in {analysisResult.processing_time_ms}ms · Model: {analysisResult.model}
+                    </p>
+
                     {analysisResult.confidence_notes && (
                       <p className="text-xs text-muted-foreground italic flex items-start gap-1.5">
                         <Shield className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
@@ -597,7 +696,7 @@ const UploadPage = () => {
                   >
                     <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
                       <Zap className="w-5 h-5 text-primary" />
-                      Key Findings
+                      {t("results.keyFindings")}
                       <span className="text-xs font-normal text-muted-foreground ml-1">
                         ({analysisResult.key_findings.length})
                       </span>
@@ -634,6 +733,12 @@ const UploadPage = () => {
                                 {finding.explanation && (
                                   <p className="text-xs text-secondary-foreground mt-1">{finding.explanation}</p>
                                 )}
+                                {finding.source && (
+                                  <p className="text-[10px] text-muted-foreground/70 mt-1 flex items-center gap-1">
+                                    <Eye className="w-2.5 h-2.5" />
+                                    Source: {finding.source}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           ))}
@@ -653,7 +758,7 @@ const UploadPage = () => {
                   >
                     <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
                       <AlertTriangle className="w-5 h-5 text-yellow-400" />
-                      Abnormal Values
+                      {t("results.abnormalValues")}
                       <span className="text-xs font-normal text-yellow-400/70 ml-1">
                         ({analysisResult.abnormal_values.length} flagged)
                       </span>
@@ -736,7 +841,7 @@ const UploadPage = () => {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
                       <MessageSquareText className="w-5 h-5 text-primary" />
-                      Questions for Your Doctor
+                      {t("results.doctorQuestions")}
                     </h3>
                     <div className="flex gap-2">
                       <button
@@ -847,9 +952,9 @@ const UploadPage = () => {
                     Listen in Your Language
                   </h3>
 
-                  {/* Language audio buttons */}
+                  {/* Language audio buttons — Hindi only (Kannada TTS not available) */}
                   <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                    {LANGUAGES.filter(l => l.code !== "en").map((lang) => (
+                    {LANGUAGES.filter(l => l.code === "hi").map((lang) => (
                       <button
                         key={lang.code}
                         onClick={() => loadAndPlayAudio(lang.code)}
@@ -937,7 +1042,7 @@ const UploadPage = () => {
               <GlassCard delay={0.45}>
                 <h3 className="font-display font-bold text-lg mb-5 text-foreground flex items-center gap-2">
                   <Landmark className="w-5 h-5 text-primary" />
-                  Government Scheme Matching
+                  {t("schemes.title")}
                   {schemeResult?.rag_used && (
                     <span className="ml-auto text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary flex items-center gap-1">
                       <Sparkles className="w-3 h-3" /> AI-Powered
@@ -947,7 +1052,7 @@ const UploadPage = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1.5 block">State</label>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">{t("schemes.state")}</label>
                     <select value={schemeState} onChange={(e) => setSchemeState(e.target.value)}
                       className="w-full glass-card bg-secondary p-3 rounded-xl text-sm text-foreground border-none outline-none">
                       <option>Karnataka</option>
@@ -965,7 +1070,7 @@ const UploadPage = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1.5 block">Income Range</label>
+                    <label className="text-xs text-muted-foreground mb-1.5 block">{t("schemes.income")}</label>
                     <select value={schemeIncome} onChange={(e) => setSchemeIncome(e.target.value)}
                       className="w-full glass-card bg-secondary p-3 rounded-xl text-sm text-foreground border-none outline-none">
                       <option value="below-1l">Below ₹1,00,000</option>
@@ -986,7 +1091,7 @@ const UploadPage = () => {
                         schemeBpl ? "gradient-bg text-primary-foreground" : "glass-card text-muted-foreground"
                       }`}
                     >
-                      {schemeBpl ? "BPL Card Holder ✓" : "APL (No BPL Card)"}
+                      {schemeBpl ? "BPL Card Holder" : "APL (No BPL Card)"}
                     </button>
                   </div>
                 </div>
@@ -1001,7 +1106,7 @@ const UploadPage = () => {
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      Find Eligible Schemes
+                      {t("schemes.find")}
                     </>
                   )}
                 </button>
@@ -1054,6 +1159,26 @@ const UploadPage = () => {
                             <p className="text-xs text-accent">
                               <span className="font-medium">Why this applies to you:</span> {scheme.match_reason}
                             </p>
+                          )}
+
+                          {/* Eligibility match factors */}
+                          {scheme.match_factors && scheme.match_factors.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {scheme.match_factors.map((mf, mfi) => (
+                                <span
+                                  key={mfi}
+                                  className={`text-[10px] px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                                    mf.matched
+                                      ? "bg-emerald-500/15 text-emerald-400"
+                                      : "bg-red-500/15 text-red-400"
+                                  }`}
+                                  title={mf.detail}
+                                >
+                                  {mf.matched ? <CheckCircle2 className="w-2.5 h-2.5" /> : <X className="w-2.5 h-2.5" />}
+                                  {mf.factor}
+                                </span>
+                              ))}
+                            </div>
                           )}
 
                           {/* Coverage */}
@@ -1118,6 +1243,85 @@ const UploadPage = () => {
                 </AnimatePresence>
               </GlassCard>
 
+              {/* Send Summary to Phone (SMS) — disabled via feature flag */}
+              {/* To enable: set SMS_ENABLED=true in backend .env */}
+              {false && analysisResult && (
+                <GlassCard delay={0.48}>
+                  <h3 className="font-display font-bold text-lg mb-4 text-foreground flex items-center gap-2">
+                    <MessageCircle className="w-5 h-5 text-primary" />
+                    {t("sms.title")}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Get a text message summary of your report on your phone. Useful for sharing with family or your doctor.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="tel"
+                      value={smsPhone}
+                      onChange={(e) => {
+                        setSmsPhone(e.target.value);
+                        setSmsSent(false);
+                      }}
+                      placeholder="+91XXXXXXXXXX"
+                      maxLength={13}
+                      className="flex-1 glass-card bg-secondary px-4 py-2.5 rounded-xl text-sm text-foreground border-none outline-none"
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!uploadResponse || !smsPhone.match(/^\+91\d{10}$/)) {
+                          setError("Please enter a valid Indian phone number (+91XXXXXXXXXX).");
+                          return;
+                        }
+                        setSmsLoading(true);
+                        try {
+                          const res = await apiClient.sendSMSSummary(
+                            uploadResponse.session_id,
+                            smsPhone,
+                            smsIncludeSchemes,
+                            selectedLanguage,
+                          );
+                          if (res.success) {
+                            setSmsSent(true);
+                          } else {
+                            setError(res.message || "SMS failed.");
+                          }
+                        } catch (err: any) {
+                          setError(err.message || "Failed to send SMS.");
+                        } finally {
+                          setSmsLoading(false);
+                        }
+                      }}
+                      disabled={smsLoading || smsSent}
+                      className="btn-primary-gradient px-5 py-2.5 text-sm font-medium flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {smsLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : smsSent ? (
+                        <CheckCircle2 className="w-4 h-4" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
+                      {smsSent ? "Sent!" : "Send SMS"}
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3">
+                    <button
+                      onClick={() => setSmsIncludeSchemes(!smsIncludeSchemes)}
+                      className={`text-xs px-3 py-1 rounded-full transition-colors ${
+                        smsIncludeSchemes
+                          ? "gradient-bg text-primary-foreground"
+                          : "glass-card text-muted-foreground"
+                      }`}
+                    >
+                      {smsIncludeSchemes ? "Include Schemes (on)" : "Include Schemes"}
+                    </button>
+                    <span className="text-[10px] text-muted-foreground">
+                      Standard SMS charges may apply
+                    </span>
+                  </div>
+                </GlassCard>
+              )}
+
               {/* Follow-up Chat */}
               <GlassCard delay={0.5}>
                 <button
@@ -1126,7 +1330,7 @@ const UploadPage = () => {
                 >
                   <h3 className="font-display font-bold text-lg text-foreground flex items-center gap-2">
                     <MessageSquareText className="w-5 h-5 text-primary" />
-                    Ask a Follow-up Question
+                    {t("chat.title")}
                   </h3>
                   {showChat ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                 </button>

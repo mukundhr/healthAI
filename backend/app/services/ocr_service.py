@@ -1,13 +1,15 @@
 """
 OCR Service with Textract primary and Tesseract fallback.
 Includes image preprocessing for improved accuracy.
+Supports multi-page PDFs via Textract async (StartDocumentAnalysis).
 """
 
+import asyncio
 import io
 import logging
-import math
-from typing import Dict, Any, Optional, List, Tuple
-from PIL import Image, ImageFilter, ImageEnhance, ImageOps
+import time
+from typing import Dict, Any, Optional, List
+from PIL import Image, ImageFilter, ImageEnhance
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -231,13 +233,25 @@ class OCRService:
         self.tesseract = TesseractOCR() if TESSERACT_AVAILABLE else None
 
     async def extract_with_textract(
-        self, textract_client, file_content: bytes, file_name: str
+        self, textract_client, file_content: bytes, file_name: str,
+        s3_info: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        """Primary extraction using Amazon Textract."""
-        try:
-            is_pdf = file_name.lower().endswith(".pdf")
+        """Primary extraction using Amazon Textract.
 
-            # For images, preprocess first
+        For multi-page PDFs (or any PDF when s3_info is provided), uses the
+        async StartDocumentAnalysis API which reads from S3.  For images and
+        single-page docs, uses the synchronous AnalyzeDocument with bytes.
+        """
+        is_pdf = file_name.lower().endswith(".pdf")
+
+        # Multi-page PDF path: use async Textract via S3
+        if is_pdf and s3_info:
+            return await self._extract_with_textract_async(
+                textract_client, s3_info
+            )
+
+        # Synchronous path (images / small single-page PDFs)
+        try:
             if not is_pdf:
                 processed = self.preprocessor.preprocess_to_bytes(file_content)
             else:
@@ -298,6 +312,122 @@ class OCRService:
         except Exception as e:
             logger.error(f"Textract extraction failed: {e}")
             raise
+
+    async def _extract_with_textract_async(
+        self, textract_client, s3_info: Dict[str, str],
+    ) -> Dict[str, Any]:
+        """
+        Extract text from multi-page PDFs using Textract async API.
+
+        Uses StartDocumentAnalysis (reads from S3) then polls
+        GetDocumentAnalysis until the job completes.
+        """
+        bucket = s3_info["bucket"]
+        s3_key = s3_info["s3_key"]
+
+        logger.info(f"Starting async Textract for s3://{bucket}/{s3_key}")
+
+        try:
+            start_resp = textract_client.start_document_analysis(
+                DocumentLocation={
+                    "S3Object": {"Bucket": bucket, "Name": s3_key}
+                },
+                FeatureTypes=["TABLES", "FORMS"],
+            )
+            job_id = start_resp["JobId"]
+            logger.info(f"Textract job started: {job_id}")
+        except Exception as e:
+            logger.error(f"StartDocumentAnalysis failed: {e}")
+            raise
+
+        # Poll for completion (max ~5 minutes)
+        max_wait = 300  # seconds
+        poll_interval = 3  # seconds
+        elapsed = 0
+
+        while elapsed < max_wait:
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
+
+            try:
+                status_resp = textract_client.get_document_analysis(JobId=job_id)
+            except Exception as e:
+                logger.error(f"GetDocumentAnalysis failed: {e}")
+                raise
+
+            status = status_resp["JobStatus"]
+            if status == "SUCCEEDED":
+                break
+            elif status == "FAILED":
+                msg = status_resp.get("StatusMessage", "Unknown error")
+                raise RuntimeError(f"Textract job failed: {msg}")
+            # IN_PROGRESS — keep polling
+        else:
+            raise RuntimeError(
+                f"Textract job {job_id} timed out after {max_wait}s"
+            )
+
+        # Collect all pages of results (paginated)
+        all_blocks: List[dict] = list(status_resp.get("Blocks", []))
+        next_token = status_resp.get("NextToken")
+
+        while next_token:
+            try:
+                page_resp = textract_client.get_document_analysis(
+                    JobId=job_id, NextToken=next_token
+                )
+                all_blocks.extend(page_resp.get("Blocks", []))
+                next_token = page_resp.get("NextToken")
+            except Exception as e:
+                logger.warning(f"Pagination error (continuing with partial): {e}")
+                break
+
+        # Parse blocks (same logic as synchronous path)
+        text_blocks = []
+        table_data = []
+        key_value_pairs = []
+        block_map = {b["Id"]: b for b in all_blocks}
+
+        for block in all_blocks:
+            if block["BlockType"] == "LINE":
+                text_blocks.append({
+                    "text": block.get("Text", ""),
+                    "confidence": block.get("Confidence", 0),
+                    "page": block.get("Page", 1),
+                })
+            elif block["BlockType"] == "TABLE":
+                table = self._extract_table(block, block_map)
+                if table:
+                    table_data.append(table)
+            elif block["BlockType"] == "KEY_VALUE_SET":
+                if "KEY" in block.get("EntityTypes", []):
+                    kv = self._extract_key_value(block, block_map)
+                    if kv:
+                        key_value_pairs.append(kv)
+
+        avg_confidence = (
+            sum(b["confidence"] for b in text_blocks) / len(text_blocks)
+            if text_blocks else 0
+        )
+        full_text = "\n".join(b["text"] for b in text_blocks)
+        total_pages = max((b.get("Page", 1) for b in all_blocks), default=1)
+
+        logger.info(
+            f"Textract async: {len(text_blocks)} lines, {total_pages} pages, "
+            f"{len(table_data)} tables, {len(key_value_pairs)} KV pairs, "
+            f"{avg_confidence:.1f}% confidence"
+        )
+
+        return {
+            "text": full_text,
+            "blocks": text_blocks,
+            "confidence": avg_confidence,
+            "blocks_count": len(text_blocks),
+            "tables": table_data,
+            "key_value_pairs": key_value_pairs,
+            "pages": total_pages,
+            "engine": "textract-async",
+        }
 
     def _extract_table(self, table_block: dict, block_map: dict) -> Optional[List[List[str]]]:
         """Extract table data from Textract TABLE block."""
@@ -377,6 +507,7 @@ class OCRService:
         file_content: bytes,
         file_name: str,
         enable_fallback: bool = True,
+        s3_info: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
         """
         Extract text with Textract primary, Tesseract fallback.
@@ -396,7 +527,7 @@ class OCRService:
         # Primary: Textract
         try:
             result = await self.extract_with_textract(
-                textract_client, file_content, file_name
+                textract_client, file_content, file_name, s3_info=s3_info
             )
 
             # If Textract confidence is very low and Tesseract available, try fallback

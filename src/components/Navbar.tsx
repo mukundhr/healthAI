@@ -1,9 +1,11 @@
 import { Link, useLocation } from "react-router-dom";
 import { Mic } from "lucide-react";
 import { motion } from "framer-motion";
+import { useI18n, LanguageSwitcher } from "@/lib/i18n";
 
 const Navbar = () => {
   const location = useLocation();
+  const { t } = useI18n();
 
   return (
     <motion.nav
@@ -24,12 +26,19 @@ const Navbar = () => {
         </Link>
 
         <div className="flex items-center gap-3">
-          {location.pathname === "/" && (
+          <LanguageSwitcher />
+          <Link
+            to="/about"
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors hidden sm:inline"
+          >
+            {t("nav.about")}
+          </Link>
+          {location.pathname !== "/upload" && (
             <Link
               to="/upload"
               className="btn-primary-gradient px-4 py-2 text-sm font-medium"
             >
-              Start Now
+              {t("nav.startNow")}
             </Link>
           )}
         </div>

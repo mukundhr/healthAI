@@ -1,8 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, BackgroundTasks
-from fastapi.responses import JSONResponse
 import uuid
 import logging
-from datetime import datetime
 
 from app.schemas import DocumentUploadResponse, ProcessingStatus, QualityInfo
 from app.services.aws_service import aws_service
@@ -107,8 +105,39 @@ async def upload_document(
     )
 
 
+async def _cleanup_s3_document(session_id: str):
+    """Delete the uploaded document from S3 immediately after processing.
+
+    Healthcare data should not persist in cloud storage longer than necessary.
+    The file is only stored in S3 transiently so that AWS Textract can read it;
+    once OCR is complete the object is removed and the S3 reference is cleared.
+    """
+    session_data = sessions_store.get(session_id)
+    s3_info = session_data.get("s3_info") if session_data else None
+    if not s3_info:
+        return
+
+    try:
+        await aws_service.delete_document(s3_info["s3_key"])
+        # Clear the S3 reference so no stale pointer remains in the session
+        sessions_store.update(session_id, {"s3_info": None})
+        logger.info(
+            f"[Privacy] S3 object deleted for session {session_id}: "
+            f"s3://{s3_info['bucket']}/{s3_info['s3_key']}"
+        )
+    except Exception as e:
+        logger.error(
+            f"[Privacy] Failed to delete S3 object for session {session_id}: {e}. "
+            "Manual cleanup may be required."
+        )
+
+
 async def process_document(session_id: str, file_content: bytes, file_name: str):
-    """Background task: preprocess image, run OCR, store results."""
+    """Background task: preprocess image, run OCR, store results.
+
+    The uploaded S3 object is automatically deleted once OCR extraction
+    finishes (success or failure) to protect patient data privacy.
+    """
     try:
         # Step 1: Preprocessing
         sessions_store.update(session_id, {
@@ -122,12 +151,20 @@ async def process_document(session_id: str, file_content: bytes, file_name: str)
             "status_message": STATUS_MESSAGES[ProcessingStatus.EXTRACTING],
         })
 
+        # Retrieve S3 info so Textract async API can read multi-page PDFs
+        session_data = sessions_store.get(session_id)
+        s3_info = session_data.get("s3_info") if session_data else None
+
         ocr_result = await ocr_service.extract_text(
             textract_client=aws_service.textract_client,
             file_content=file_content,
             file_name=file_name,
             enable_fallback=True,
+            s3_info=s3_info,
         )
+
+        # Immediately delete the document from S3 — Textract is done with it
+        await _cleanup_s3_document(session_id)
 
         # Step 3: PII Anonymisation
         sessions_store.update(session_id, {
@@ -164,6 +201,8 @@ async def process_document(session_id: str, file_content: bytes, file_name: str)
 
     except Exception as e:
         logger.error(f"Processing error for {session_id}: {e}")
+        # Even on failure, ensure the S3 document is cleaned up
+        await _cleanup_s3_document(session_id)
         sessions_store.update(session_id, {
             "status": ProcessingStatus.FAILED,
             "status_message": f"Processing failed: {str(e)}",

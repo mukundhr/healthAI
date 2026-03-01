@@ -1,10 +1,14 @@
-const DisclaimerBar = () => (
-  <div className="disclaimer-bar">
-    <p className="text-xs sm:text-sm max-w-3xl mx-auto">
-      AccessAI provides informational guidance only. It is not a medical diagnosis tool.
-      Always consult a qualified healthcare professional.
-    </p>
-  </div>
-);
+import { useI18n } from "@/lib/i18n";
+
+const DisclaimerBar = () => {
+  const { t } = useI18n();
+  return (
+    <div className="disclaimer-bar">
+      <p className="text-xs sm:text-sm max-w-3xl mx-auto">
+        {t("disclaimer.text")}
+      </p>
+    </div>
+  );
+};
 
 export default DisclaimerBar;

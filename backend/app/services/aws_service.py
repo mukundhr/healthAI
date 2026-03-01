@@ -1,7 +1,7 @@
 import boto3
 import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 from datetime import datetime
 import uuid
 
@@ -17,7 +17,9 @@ class AWSService:
         self.bedrock_client = None
         self.bedrock_runtime = None
         self.polly_client = None
+        self.translate_client = None
         self.comprehend_client = None
+        self.sns_client = None
         self._initialized = False
     
     def initialize_services(self):
@@ -48,8 +50,20 @@ class AWSService:
         # Polly Client
         self.polly_client = session.client('polly')
         
+        # Translate Client (for audio language translation)
+        self.translate_client = session.client('translate')
+        
         # Comprehend Client (for PII detection)
         self.comprehend_client = session.client('comprehend')
+        
+        # SNS Client (for SMS notifications) — only if SMS feature is enabled
+        if settings.SMS_ENABLED:
+            self.sns_client = session.client('sns')
+            from app.services.sms_service import sms_service
+            sms_service.initialize(self.sns_client)
+            logger.info("SMS (SNS) enabled")
+        else:
+            logger.info("SMS (SNS) disabled — set SMS_ENABLED=true to activate")
         
         self._initialized = True
         logger.info("AWS services initialized successfully")
@@ -157,168 +171,80 @@ class AWSService:
             logger.error(f"Textract error: {str(e)}")
             raise
     
-    async def generate_medical_explanation(
-        self,
-        extracted_text: str,
-        language: str = "en",
-        user_context: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+    def _translate_for_polly(self, text: str, target_lang: str) -> str:
+        """Translate text to the target language before Polly synthesis.
+
+        Pipeline: Amazon Translate (primary) → Bedrock LLM (fallback) → original text.
+        """
+        # Quick heuristic: skip if text already appears to be in the target language
+        non_ascii_ratio = sum(1 for c in text if ord(c) > 127) / max(len(text), 1)
+        if target_lang == "hi" and non_ascii_ratio > 0.3:
+            return text  # already Devanagari / non-Latin
+        if target_lang == "en" and non_ascii_ratio < 0.1:
+            return text  # already English
+
+        # --- Attempt 1: Amazon Translate (fast, purpose-built) ---
         try:
-            # Build prompt based on language and context
-            prompt = self._build_medical_prompt(extracted_text, language, user_context)
-            
-            # Invoke Bedrock model
-            response = self.bedrock_runtime.invoke_model(
-                modelId=settings.AWS_BEDROCK_MODEL_ID,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 4096,
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ]
-                })
+            resp = self.translate_client.translate_text(
+                Text=text[:5000],
+                SourceLanguageCode="auto",
+                TargetLanguageCode=target_lang,
             )
-            
-            # Parse response
-            response_body = json.loads(response['body'].read().decode('utf-8'))
-            explanation = response_body['content'][0]['text']
-            
-            # Extract confidence level
-            confidence = self._estimate_confidence(explanation)
-            
-            # Generate doctor questions
-            questions = await self._generate_doctor_questions(extracted_text, language)
-            
-            return {
-                'explanation': explanation,
-                'confidence': confidence,
-                'language': language,
-                'questions': questions,
-                'model': settings.AWS_BEDROCK_MODEL_ID
-            }
+            translated = resp["TranslatedText"]
+            logger.info(f"Translated text to {target_lang} via Amazon Translate ({len(text)} → {len(translated)} chars)")
+            return translated
         except Exception as e:
-            logger.error(f"Bedrock error: {str(e)}")
-            raise
-    
-    def _build_medical_prompt(self, text: str, language: str, context: Optional[Dict]) -> str:
+            logger.warning(f"Amazon Translate failed: {e}")
 
-        lang_instruction = {
-            "en": "Respond in English",
-            "hi": "Respond in Hindi (हिंदी में जवाब दें)",
-            "kn": "Respond in Kannada (ಕನ್ನಡದಲ್ಲಿ ಉತ್ತರಿಸಿ)"
-        }.get(language, "Respond in English")
-        
-        system_prompt = f"""You are AccessAI, a medical report analysis assistant designed to help users understand their health reports in simple language.
-
-IMPORTANT GUIDELINES:
-1. {lang_instruction}
-2. Use simple, everyday language that anyone can understand
-3. Always explain medical terms when you first use them
-4. Be transparent about what the AI knows and doesn't know
-5. If something is unclear or uncertain, explicitly state "I'm not certain about..."
-6. Never provide medical diagnoses - always recommend consulting a doctor
-7. Structure your response with clear sections
-8. Highlight any values that are outside normal ranges
-9. Include a confidence statement about the analysis
-
-CONTEXT: The user has uploaded a medical report. Please analyze and explain it in simple terms."""
-        
-        user_prompt = f"""{system_prompt}
-
-MEDICAL REPORT TEXT:
----
-{text}
----
-
-Please provide:
-1. A summary of what this report shows
-2. Any values that are outside normal ranges, explained simply
-3. What the user should discuss with their doctor
-4. A clear statement about your confidence in this analysis
-
-Format your response clearly with headings."""
-        
-        return user_prompt
-    
-    async def _generate_doctor_questions(self, text: str, language: str) -> list:
-        """Generate questions for the doctor based on the report"""
+        # --- Attempt 2: Bedrock LLM fallback ---
         try:
-            prompt = f"""Based on the following medical report, generate 5 important questions that the patient should ask their doctor. 
-
-{lang_instruction := {
-    "en": "Respond in English",
-    "hi": "Respond in Hindi",
-    "kn": "Respond in Kannada"
-}.get(language, "Respond in English")}
-
-MEDICAL REPORT:
-{text}
-
-Generate exactly 5 questions, one per line, that would help the patient understand their health better. These should be specific to the findings in the report."""
-
-            response = self.bedrock_runtime.invoke_model(
-                modelId=settings.AWS_BEDROCK_MODEL_ID,
-                contentType="application/json",
-                accept="application/json",
-                body=json.dumps({
-                    "anthropic_version": "bedrock-2023-05-31",
-                    "max_tokens": 1024,
-                    "messages": [
-                        {"role": "user", "content": prompt}
-                    ]
-                })
+            lang_names = {"hi": "Hindi", "en": "English", "kn": "Kannada"}
+            target_name = lang_names.get(target_lang, "Hindi")
+            prompt = (
+                f"Translate the following text to {target_name}. "
+                f"Return ONLY the translated text, nothing else.\n\n{text[:3000]}"
             )
-            
-            response_body = json.loads(response['body'].read().decode('utf-8'))
-            questions_text = response_body['content'][0]['text']
-            
-            # Parse questions (split by newlines, filter empty)
-            questions = [q.strip() for q in questions_text.split('\n') if q.strip() and ('.' in q or '?' in q)]
-            
-            # Ensure we have exactly 5 questions
-            return questions[:5] if len(questions) >= 5 else questions + [""] * (5 - len(questions))
-            
-        except Exception as e:
-            logger.error(f"Question generation error: {str(e)}")
-            return []
-    
-    def _estimate_confidence(self, explanation: str) -> int:
-        # Simple heuristic - could be enhanced with ML
-        uncertainty_indicators = ["may", "might", "could be", "possibly", "不确定", "अनिश्चित"]
-        
-        if any(word in explanation.lower() for word in uncertainty_indicators):
-            return 75
-        return 85
-    
+            resp = self.bedrock_runtime.converse(
+                modelId=settings.AWS_BEDROCK_MODEL_ID,
+                messages=[{"role": "user", "content": [{"text": prompt}]}],
+                inferenceConfig={"maxTokens": 4096, "temperature": 0.1},
+            )
+            translated = resp["output"]["message"]["content"][0]["text"]
+            logger.info(f"Translated text to {target_lang} via Bedrock LLM fallback")
+            return translated
+        except Exception as e2:
+            logger.warning(f"Bedrock translation fallback also failed: {e2}")
+
+        return text  # last resort: return original
+
     async def synthesize_speech(
         self,
         text: str,
         language: str = "hi"
     ) -> Dict[str, Any]:
         try:
-            # Select voice based on language
-            voice_id = {
-                "hi": settings.AWS_POLLY_VOICE_ID_HINDI,
-                "kn": settings.AWS_POLLY_VOICE_ID_KANNADA,
-                "en": "Joanna"
-            }.get(language, settings.AWS_POLLY_VOICE_ID_HINDI)
-            
-            # Select engine
-            engine = "standard"
-            if language in ["hi", "kn"]:
-                engine = "neural"
-            
+            # Voice / engine / Polly language-code mapping.
+            # Kajal (neural): supports hi-IN and en-IN ONLY.
+            # Joanna (neural): supports en-US.
+            # AWS Polly has NO Kannada voice → fall back to Hindi audio.
+            VOICE_CONFIG = {
+                "hi": {"voice": "Kajal", "engine": "neural", "polly_lang": "hi-IN", "translate_to": "hi"},
+                "kn": {"voice": "Kajal", "engine": "neural", "polly_lang": "hi-IN", "translate_to": "hi"},
+                "en": {"voice": "Joanna", "engine": "neural", "polly_lang": "en-US", "translate_to": "en"},
+            }
+            cfg = VOICE_CONFIG.get(language, VOICE_CONFIG["hi"])
+            voice_id = cfg["voice"]
+            engine = cfg["engine"]
+
+            # Translate text to the language Polly will actually speak
+            translated_text = self._translate_for_polly(text, cfg["translate_to"])
+
             response = self.polly_client.synthesize_speech(
-                Text=text,
+                Text=translated_text,
                 OutputFormat='mp3',
                 VoiceId=voice_id,
                 Engine=engine,
-                LanguageCode=self._get_polly_language_code(language)
+                LanguageCode=cfg["polly_lang"]
             )
             
             # Get audio bytes
